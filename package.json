@@ -1,0 +1,16 @@
+{
+  "name": "car1-fintech",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/api",
+    "build": "tsc -p tsconfig.base.json",
+     "snapshot": "tsx ./snapshot.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "ISC"
+}

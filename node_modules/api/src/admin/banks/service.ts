@@ -1,0 +1,74 @@
+// src/admin/banks/service.ts
+
+import { db } from "../../db/db.js";
+import type { CreateBankDTO, UpdateBankDTO } from "./banks.schema.js";
+
+/* CREATE */
+export async function createBank(data: CreateBankDTO, tenantId: number) {
+    const result = await db.query(
+        `INSERT INTO banks (tenant_id, name, code, logo_url, active)
+     VALUES ($1,$2,$3,$4,$5)
+     RETURNING *`,
+        [tenantId, data.name, data.code, data.logo_url ?? null, data.active]
+    );
+
+    return result.rows[0];
+}
+
+/* GET */
+export async function getBanks(tenantId: number) {
+    const result = await db.query(
+        `SELECT * FROM banks 
+     WHERE tenant_id = $1 AND active = true
+     ORDER BY id DESC`,
+        [tenantId]
+    );
+
+    return result.rows;
+}
+
+/* UPDATE */
+export async function updateBank(
+    id: number,
+    data: UpdateBankDTO,
+    tenantId: number
+) {
+    const existing = await db.query(
+        `SELECT * FROM banks WHERE id = $1 AND tenant_id = $2`,
+        [id, tenantId]
+    );
+
+    const b = existing.rows[0];
+    if (!b) throw new Error("Bank not found");
+
+    const result = await db.query(
+        `UPDATE banks
+     SET name=$1, code=$2, logo_url=$3, active=$4
+     WHERE id=$5 AND tenant_id=$6
+     RETURNING *`,
+        [
+            data.name ?? b.name,
+            data.code ?? b.code,
+            data.logo_url ?? b.logo_url,
+            data.active ?? b.active,
+            id,
+            tenantId,
+        ]
+    );
+
+    return result.rows[0];
+}
+
+/* DELETE */
+export async function deleteBank(id: number, tenantId: number) {
+    const result = await db.query(
+        `DELETE FROM banks 
+     WHERE id = $1 AND tenant_id = $2 
+     RETURNING *`,
+        [id, tenantId]
+    );
+
+    if (!result.rows[0]) throw new Error("Bank not found");
+
+    return result.rows[0];
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "../../dist/api",
+
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true
+  },
+  "include": ["src"]
+}
