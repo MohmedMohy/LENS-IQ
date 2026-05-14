@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -79,7 +79,7 @@ function VehicleForm({ initial, saving, error, submitLabel, onSubmit, onCancel }
         handleSubmit,
         formState: { errors },
     } = useForm<VehicleFormValues>({
-        resolver: zodResolver(vehicleSchema),
+        resolver: zodResolver(vehicleSchema) as unknown as Resolver<VehicleFormValues>,
         defaultValues: {
             brand: "",
             model: "",
