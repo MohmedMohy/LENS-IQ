@@ -6,6 +6,9 @@ export const routePaths = {
     banks: "/banks",
     programs: "/programs",
     rules: "/rules",
+    customers: "/customers",
+    vehicles: "/vehicles",
+    applications: "/applications",
     evaluate: "/evaluate",
     profile: "/profile",
 } as const;

@@ -10,8 +10,17 @@ const menuItems = [
     { name: "Banks", path: routePaths.banks },
     { name: "Programs", path: routePaths.programs },
     { name: "Rules", path: routePaths.rules },
+    { divider: true, label: "Operations" },
+    { name: "Customers", path: routePaths.customers },
+    { name: "Vehicles", path: routePaths.vehicles },
+    { name: "Applications", path: routePaths.applications },
+    { divider: true, label: "Engine" },
     { name: "Evaluate", path: routePaths.evaluate },
 ];
+
+type MenuItem =
+    | { name: string; path: string; divider?: never; label?: never }
+    | { divider: true; label: string; name?: never; path?: never };
 
 // ── Shared nav content ────────────────────────────────────────────────────────
 function NavContent({
@@ -30,28 +39,32 @@ function NavContent({
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-400">
                     Decision Engine
                 </p>
-
-                <h2 className="mt-2 text-2xl font-bold text-white">
-                    Admin Panel
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-400">
-                    Financing Management System
-                </p>
+                <h2 className="mt-2 text-2xl font-bold text-white">Admin Panel</h2>
+                <p className="mt-1 text-sm text-slate-400">Financing Management System</p>
             </div>
 
             {/* Navigation */}
-            <nav className="flex flex-1 flex-col gap-2 px-4 py-6">
-                {menuItems.map((item) => {
-                    const active = currentPath === item.path;
+            <nav className="flex flex-1 flex-col gap-1 px-4 py-6 overflow-y-auto">
+                {(menuItems as MenuItem[]).map((item, i) => {
+                    if (item.divider) {
+                        return (
+                            <p
+                                key={`divider-${i}`}
+                                className="mt-4 mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-600"
+                            >
+                                {item.label}
+                            </p>
+                        );
+                    }
 
+                    const active = currentPath === item.path;
                     return (
                         <Link
                             key={item.path}
                             to={item.path}
                             onClick={onNavigate}
                             className={[
-                                "rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                                "rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200",
                                 active
                                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                                     : "text-slate-300 hover:bg-slate-800 hover:text-white",
@@ -81,49 +94,28 @@ function NavContent({
 export default function Sidebar() {
     const location = useLocation();
     const navigate = useNavigate();
-
     const currentPath = location.pathname;
-
     const logout = useAuthStore((state) => state.logout);
-
     const [drawerOpen, setDrawerOpen] = useState(false);
 
-    // Prevent body scroll when drawer is open
     useEffect(() => {
-        if (drawerOpen) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "";
-        }
-
-        return () => {
-            document.body.style.overflow = "";
-        };
+        document.body.style.overflow = drawerOpen ? "hidden" : "";
+        return () => { document.body.style.overflow = ""; };
     }, [drawerOpen]);
 
     const handleLogout = () => {
         logout();
-
-        navigate(routePaths.login, {
-            replace: true,
-        });
-    };
-
-    const handleMobileNavigate = () => {
-        setDrawerOpen(false);
+        navigate(routePaths.login, { replace: true });
     };
 
     return (
         <>
-            {/* ── Desktop sidebar (lg+) ─────────────────────────────────────── */}
+            {/* Desktop sidebar */}
             <aside className="hidden min-h-screen w-64 flex-col border-r border-slate-800 bg-slate-950 lg:flex">
-                <NavContent
-                    currentPath={currentPath}
-                    onLogout={handleLogout}
-                />
+                <NavContent currentPath={currentPath} onLogout={handleLogout} />
             </aside>
 
-            {/* ── Mobile hamburger button ───────────────────────────────────── */}
+            {/* Mobile hamburger */}
             <button
                 type="button"
                 aria-label="Open navigation menu"
@@ -131,14 +123,10 @@ export default function Sidebar() {
                 onClick={() => setDrawerOpen(true)}
                 className={[
                     "fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center",
-                    "rounded-xl bg-slate-950 shadow-lg transition-transform duration-200",
-                    "lg:hidden",
-                    drawerOpen
-                        ? "pointer-events-none opacity-0"
-                        : "opacity-100",
+                    "rounded-xl bg-slate-950 shadow-lg transition-transform duration-200 lg:hidden",
+                    drawerOpen ? "pointer-events-none opacity-0" : "opacity-100",
                 ].join(" ")}
             >
-                {/* Hamburger icon */}
                 <span className="flex flex-col gap-[5px]">
                     <span className="block h-0.5 w-5 rounded-full bg-white" />
                     <span className="block h-0.5 w-5 rounded-full bg-white" />
@@ -146,7 +134,7 @@ export default function Sidebar() {
                 </span>
             </button>
 
-            {/* ── Mobile drawer overlay ─────────────────────────────────────── */}
+            {/* Mobile overlay */}
             {drawerOpen && (
                 <div
                     className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
@@ -155,44 +143,30 @@ export default function Sidebar() {
                 />
             )}
 
-            {/* ── Mobile drawer panel ───────────────────────────────────────── */}
+            {/* Mobile drawer */}
             <aside
                 className={[
                     "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-slate-950",
                     "border-r border-slate-800 shadow-2xl",
                     "transition-transform duration-300 ease-in-out lg:hidden",
-                    drawerOpen
-                        ? "translate-x-0"
-                        : "-translate-x-full",
+                    drawerOpen ? "translate-x-0" : "-translate-x-full",
                 ].join(" ")}
                 aria-label="Mobile navigation"
             >
-                {/* Close button */}
                 <button
                     type="button"
                     aria-label="Close navigation menu"
                     onClick={() => setDrawerOpen(false)}
                     className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
-
                 <NavContent
                     currentPath={currentPath}
-                    onNavigate={handleMobileNavigate}
+                    onNavigate={() => setDrawerOpen(false)}
                     onLogout={handleLogout}
                 />
             </aside>

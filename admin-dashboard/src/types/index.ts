@@ -80,3 +80,95 @@ export type Rule = {
 
 export type CreateRulePayload = Omit<Rule, "id">;
 export type UpdateRulePayload = Partial<CreateRulePayload>;
+
+// ─────────────────────────────────────────────
+// CUSTOMER
+// ─────────────────────────────────────────────
+
+export type JobType = "private" | "government" | "corporate" | "freelancer" | "retired";
+export type MaritalStatus = "single" | "married" | "divorced" | "widowed";
+
+export type Customer = {
+    id: number;
+    name: string;
+    national_id: string;
+    phone: string;
+    birth_date: string;
+    salary: number;
+    job_type: JobType;
+    current_liabilities: number;
+    additional_income: number;
+    employer_name: string | null;
+    employment_tenure_months: number | null;
+    insurance_number: string | null;
+    club_membership: string | null;
+    marital_status: MaritalStatus | null;
+    owns_property: boolean;
+    owns_car: boolean;
+    salary_transfer: boolean;
+};
+
+export type CreateCustomerPayload = Omit<Customer, "id">;
+export type UpdateCustomerPayload = Partial<CreateCustomerPayload>;
+
+// ─────────────────────────────────────────────
+// VEHICLE
+// ─────────────────────────────────────────────
+
+export type VehicleCondition = "new" | "used";
+export type VehicleCategory = "sedan" | "suv" | "truck" | "van" | "microbus";
+
+export type Vehicle = {
+    id: number;
+    brand: string;
+    model: string;
+    manufacturing_year: number;
+    condition: VehicleCondition;
+    price: number;
+    category: VehicleCategory | null;
+};
+
+export type CreateVehiclePayload = Omit<Vehicle, "id">;
+export type UpdateVehiclePayload = Partial<CreateVehiclePayload>;
+
+// ─────────────────────────────────────────────
+// APPLICATION
+// ─────────────────────────────────────────────
+
+export type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type PaymentMethod = "salary_transfer" | "bank_account" | "cash_proof";
+
+export type Application = {
+    id: number;
+    customer_id: number;
+    vehicle_id: number;
+    requested_down_payment: number;
+    requested_months: number;
+    payment_method: PaymentMethod;
+    status: ApplicationStatus;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+    // Joined fields from DB query
+    customer_name: string;
+    salary: number;
+    job_type: JobType;
+    brand: string;
+    model: string;
+    price: number;
+    manufacturing_year: number;
+    condition: VehicleCondition;
+};
+
+export type CreateApplicationPayload = {
+    customer_id: number;
+    vehicle_id: number;
+    requested_down_payment: number;
+    requested_months: number;
+    payment_method?: PaymentMethod;
+    notes?: string;
+};
+
+export type UpdateApplicationStatusPayload = {
+    status: ApplicationStatus;
+};
