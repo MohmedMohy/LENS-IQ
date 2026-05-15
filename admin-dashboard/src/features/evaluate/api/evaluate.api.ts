@@ -1,33 +1,46 @@
+// src/features/evaluate/api/evaluate.api.ts
+
 import { apiClient } from "../../../api/client";
 
+// ─── Request ──────────────────────────────────────────────────────────────────
+
 export type EvaluatePayload = {
-    age: number;
-    salary: number;
-    price: number;
-    current_liabilities: number;
-    requested_down_payment: number;
+    application_id: number;
 };
 
+// ─── Shared Sub-types ─────────────────────────────────────────────────────────
+
+export type ImpactLevel = "LOW" | "MEDIUM" | "HIGH";
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+export type OfferStatus = "APPROVED" | "CONDITIONAL" | "REJECTED";
+export type ReasonType = "RULE" | "RISK" | "SYSTEM";
+
 export type Reason = {
-    type: "RULE" | "RISK" | "SYSTEM";
+    type: ReasonType;
     message: string;
-    impact: "LOW" | "MEDIUM" | "HIGH";
+    impact: ImpactLevel;
 };
+
+// ─── Offer ────────────────────────────────────────────────────────────────────
 
 export type Offer = {
     programId: number;
     bankId: number;
-    status: "APPROVED" | "CONDITIONAL" | "REJECTED";
+    status: OfferStatus;
     installment: number;
     totalPayment: number;
+    financeAmount: number;
+    downPayment: number;
     interestRate: number;
     months: number;
     dti: number;
     riskScore: number;
-    riskLevel: "LOW" | "MEDIUM" | "HIGH";
+    riskLevel: RiskLevel;
     affordabilityScore: number;
-    reasons?: Reason[];
+    reasons: Reason[];
 };
+
+// ─── Response ─────────────────────────────────────────────────────────────────
 
 export type EvaluateResponse = {
     bestOffer: Offer | null;
@@ -35,9 +48,15 @@ export type EvaluateResponse = {
     error?: string;
 };
 
+// ─── API ──────────────────────────────────────────────────────────────────────
+
 export const evaluateApi = {
-    calculate: async (payload: EvaluatePayload): Promise<EvaluateResponse> => {
-        const response = await apiClient.post<EvaluateResponse>("/evaluate", payload);
-        return response.data;
+    /**
+     * Run all active financing programs against a submitted application.
+     * Backend derives customer + vehicle data from the application_id.
+     */
+    evaluate: async (payload: EvaluatePayload): Promise<EvaluateResponse> => {
+        const { data } = await apiClient.post<EvaluateResponse>("/evaluate", payload);
+        return data;
     },
 };

@@ -17,31 +17,50 @@ import type { Customer, CreateCustomerPayload, UpdateCustomerPayload } from "@/t
 
 const customerSchema = z.object({
     name: z.string().min(1, "Name is required"),
+
     national_id: z.string().length(14, "Must be exactly 14 digits"),
+
     phone: z
         .string()
         .min(11)
         .regex(/^01[0-2,5]{1}[0-9]{8}$/, "Invalid Egyptian phone number"),
+
     birth_date: z.string().min(1, "Birth date is required"),
-    salary: z.number().positive("Must be greater than 0"),
-    job_type: z.enum(["private", "government", "corporate", "freelancer", "retired"]),
-    current_liabilities: z.number().min(0).default(0),
-    additional_income: z.number().min(0).default(0),
+
+    salary: z.coerce.number().positive("Must be greater than 0"),
+
+    job_type: z.enum([
+        "private",
+        "government",
+        "corporate",
+        "freelancer",
+        "retired",
+    ]),
+
+    current_liabilities: z.coerce.number().min(0).default(0),
+
+    additional_income: z.coerce.number().min(0).default(0),
+
     employer_name: z.string().nullish(),
 
-    // إصلاح: السماح بترك مدة العمل فارغة وتحويلها إلى null
-    employment_tenure_months: z.number().int().nonnegative().nullish(),
+    employment_tenure_months: z.coerce
+        .number()
+        .int()
+        .nonnegative()
+        .nullish(),
 
     insurance_number: z.string().nullish(),
+
     club_membership: z.string().nullish(),
 
-    // إصلاح: السماح بالقيمة المبدئية الفارغة للقائمة المنسدلة
     marital_status: z
         .enum(["single", "married", "divorced", "widowed"])
         .nullish(),
 
     owns_property: z.boolean().default(false),
+
     owns_car: z.boolean().default(false),
+
     salary_transfer: z.boolean().default(false),
 });
 
