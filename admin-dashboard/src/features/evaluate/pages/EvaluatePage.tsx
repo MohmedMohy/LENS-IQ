@@ -7,7 +7,7 @@ import Card from "@/components/ui/card/Card";
 import { applicationsApi } from "@/features/applications/api/Applications";
 import { evaluateApi } from "@/features/evaluate/api/evaluate.api";
 import type { Application } from "@/types";
-import type { EvaluateResponse, Offer } from "@/features/evaluate/api/evaluate.api";
+import type { EvaluateResponse, Offer } from "./../../../../../packages/shared/types/src/evaluate";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -241,19 +241,11 @@ export default function EvaluatePage() {
             }
 
             const payload = {
-                salary: Number(app.salary),
-                price: Number(app.price),
-                requested_down_payment: Number(
-                    app.requested_down_payment
-                ),
-
-                // temporary fallback values
-                age: 30,
-                current_liabilities: 0,
+                application_id: selectedId,
             };
 
             const response =
-                await evaluateApi.calculate(payload);
+                await evaluateApi.evaluate(payload);
 
             setResult(response);
         } catch (err) {
