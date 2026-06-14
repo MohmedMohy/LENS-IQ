@@ -10,7 +10,10 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "npm run build:api && npm run build:fe",
+    "build:api": "npm --prefix apps/api run build",
+    "build:fe": "npm --prefix admin-dashboard run build",
+    "build:turbo": "turbo run build --filter=api --filter=admin-dashboard",
     "start": "turbo run start",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
