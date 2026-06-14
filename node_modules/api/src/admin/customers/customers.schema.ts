@@ -1,5 +1,3 @@
-// customers.schema.ts
-
 import { z } from "zod";
 
 export const createCustomerSchema = z.object({
@@ -10,11 +8,11 @@ export const createCustomerSchema = z.object({
     phone: z
         .string()
         .min(11)
-        .regex(/^01[0-2,5]{1}[0-9]{8}$/), // Egypt format validation
+        .regex(/^01[0-2,5]{1}[0-9]{8}$/),
 
     birth_date: z.string().datetime().optional().or(z.string()),
 
-    salary: z.number().positive(),
+    salary: z.coerce.number().positive(),
 
     job_type: z.enum([
         "private",
@@ -24,13 +22,17 @@ export const createCustomerSchema = z.object({
         "retired",
     ]),
 
-    current_liabilities: z.number().min(0).default(0),
+    current_liabilities: z.coerce.number().min(0).default(0),
 
-    additional_income: z.number().min(0).default(0),
+    additional_income: z.coerce.number().min(0).default(0),
 
     employer_name: z.string().optional(),
 
-    employment_tenure_months: z.number().int().nonnegative().optional(),
+    employment_tenure_months: z.coerce
+        .number()
+        .int()
+        .nonnegative()
+        .optional(),
 
     insurance_number: z.string().optional(),
 

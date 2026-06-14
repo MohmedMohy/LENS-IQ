@@ -24,7 +24,7 @@ export async function createVehicleController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const vehicle = await createVehicle(request.body, tenantId);
         return reply.code(201).send({ success: true, data: vehicle });
     } catch (err: any) {
@@ -37,7 +37,7 @@ export async function getVehiclesController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const vehicles = await getVehicles(tenantId);
         return reply.send({ success: true, data: vehicles });
     } catch (err: any) {
@@ -50,7 +50,7 @@ export async function getVehicleByIdController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const vehicle = await getVehicleById(Number(request.params.id), tenantId);
         return reply.send({ success: true, data: vehicle });
     } catch (err: any) {
@@ -64,7 +64,7 @@ export async function updateVehicleController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const vehicle = await updateVehicle(Number(request.params.id), request.body, tenantId);
         return reply.send({ success: true, data: vehicle });
     } catch (err: any) {
@@ -78,7 +78,7 @@ export async function deleteVehicleController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         await deleteVehicle(Number(request.params.id), tenantId);
         return reply.send({ success: true, message: "Vehicle deleted" });
     } catch (err: any) {

@@ -9,4 +9,8 @@ export interface ApplicationInput {
     club_membership: string | null;
     insurance_number: string | null;
     requestedDownPayment?: number;
+    down_payment?: number;
+    job_type?: string;
+    car_age?: number;
+    salary_transfer?: boolean;
 }

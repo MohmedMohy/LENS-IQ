@@ -1,5 +1,3 @@
-// src/auth/auth.middleware.ts
-
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { verifyToken } from "./auth.service.js";
 import { db } from "../db/db.js";
@@ -9,20 +7,18 @@ export async function authMiddleware(
     reply: FastifyReply
 ) {
     try {
-        //  JWT من الـ header
         const authHeader = req.headers.authorization;
 
         if (authHeader?.startsWith("Bearer ")) {
             const token = authHeader.split(" ")[1];
 
-            if (!token) throw new Error("Invalid token"); //  الحل
+            if (!token) throw new Error("Invalid token");
 
             const payload = verifyToken(token);
-            (req as any).tenantId = payload.tenantId;
+            req.tenantId = payload.tenantId;
             return;
         }
 
-        //  API key من الـ header
         const apiKey = req.headers["x-api-key"] as string;
 
         if (apiKey) {
@@ -33,7 +29,7 @@ export async function authMiddleware(
 
             if (!result.rows[0]) throw new Error("Invalid API key");
 
-            (req as any).tenantId = result.rows[0].id;
+            req.tenantId = result.rows[0].id;
             return;
         }
 

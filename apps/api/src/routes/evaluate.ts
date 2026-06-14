@@ -10,7 +10,7 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
         { preHandler: authMiddleware },
         async (req, reply) => {
             try {
-                const tenantId = (req as any).tenantId;
+                const tenantId = req.tenantId;
                 const { application_id } = req.body;
 
                 // 1. Fetch application full data
@@ -41,16 +41,20 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                 const currentYear = new Date().getFullYear();
 
                 const input = {
+                    id: application_id,
                     age: currentYear - new Date(row.birth_date).getFullYear(),
                     salary: Number(row.salary),
                     price: Number(row.price),
                     current_liabilities: Number(row.current_liabilities),
-                    requested_down_payment: Number(row.requested_down_payment),
+                    owns_property: Boolean(row.owns_property),
+                    owns_car: Boolean(row.owns_car),
+                    club_membership: null,
+                    insurance_number: null,
+                    requestedDownPayment: Number(row.requested_down_payment),
+                    down_payment: Number(row.requested_down_payment),
                     job_type: row.job_type,
                     car_age: currentYear - Number(row.manufacturing_year),
-                    owns_property: Boolean(row.owns_property),
                     salary_transfer: Boolean(row.salary_transfer),
-                    down_payment: Number(row.requested_down_payment)
                 };
 
                 // 3. Load programs
@@ -92,7 +96,7 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                             offer.installment,
                             offer.totalPayment,
                             offer.financeAmount ?? 0,
-                            input.requested_down_payment,
+                            Number(row.requested_down_payment),
                             offer.interestRate,
                             offer.months,
                             offer.dti,

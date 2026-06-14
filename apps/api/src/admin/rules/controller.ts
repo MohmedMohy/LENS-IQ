@@ -10,7 +10,7 @@ export async function createRuleController(
   reply: FastifyReply
 ) {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = req.tenantId;
     const body = createRuleSchema.parse(req.body);
 
     const rule = await createRule(body, tenantId);
@@ -29,7 +29,7 @@ export async function getRulesController(
   req: FastifyRequest<{ Params: { programId: string } }>,
   reply: FastifyReply
 ) {
-  const tenantId = (req as any).tenantId;
+  const tenantId = req.tenantId;
   const programId = Number(req.params.programId);
 
   const rules = await getRules(programId, tenantId);
@@ -43,7 +43,7 @@ export async function updateRuleController(
   reply: FastifyReply
 ) {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = req.tenantId;
     const id = Number(req.params.id);
     const body = updateRuleSchema.parse(req.body);
 
@@ -63,7 +63,7 @@ export async function deleteRuleController(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const tenantId = (req as any).tenantId;
+  const tenantId = req.tenantId;
   const id = Number(req.params.id);
 
   await deleteRule(id, tenantId);

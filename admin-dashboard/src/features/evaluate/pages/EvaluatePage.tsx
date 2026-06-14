@@ -7,7 +7,7 @@ import Card from "@/components/ui/card/Card";
 import { applicationsApi } from "@/features/applications/api/Applications";
 import { evaluateApi } from "@/features/evaluate/api/evaluate.api";
 import type { Application } from "@/types";
-import type { EvaluateResponse, Offer } from "./../../../../../packages/shared/types/src/evaluate";
+import type { EvaluateResponse, Offer } from "@/types";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

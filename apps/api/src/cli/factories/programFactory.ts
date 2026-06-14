@@ -5,20 +5,23 @@ export function createTestProgram(overrides?: Partial<Program>): Program {
         id: 1,
         tenantId: 1,
         bankId: 1,
-
         name: "Test Program",
-
-        financingType: "CAR_LOAN",
+        financingType: "conventional",
         calculationMethod: "reducing",
-
-        interestRate: 0.12,
+        interestRate: 14.5,
         minDownPaymentPercent: 10,
         maxMonths: 60,
-
-        // defaults لأي fields ناقصة عندك في type
-        isActive: true,
-        createdAt: new Date().toISOString(),
-
+        minMonths: 12,
+        minSalary: 5000,
+        maxCustomerAge: 60,
+        maxCarAge: 10,
+        allowedConditions: "both",
+        maxVehiclePrice: null,
+        profitRate: null,
+        maxFinanceAmount: null,
+        adminFeesPercent: 1,
+        salaryTransferRequired: false,
+        active: true,
         ...overrides,
-    } as Program;
+    };
 }

@@ -20,7 +20,7 @@ export async function createProgramController(
   reply: FastifyReply
 ) {
   try {
-    const tenantId = (req as any).tenantId; // ✅
+    const tenantId = req.tenantId; // ✅
     const body = createProgramSchema.parse(req.body);
 
     const result = await createProgram(body, tenantId); // ✅
@@ -39,7 +39,7 @@ export async function getProgramsController(
   req: FastifyRequest,
   reply: FastifyReply
 ) {
-  const tenantId = (req as any).tenantId; // ✅
+  const tenantId = req.tenantId; // ✅
   const data = await getPrograms(tenantId); // ✅
   return reply.send(data);
 }
@@ -50,7 +50,7 @@ export async function updateProgramController(
   reply: FastifyReply
 ) {
   try {
-    const tenantId = (req as any).tenantId; // ✅
+    const tenantId = req.tenantId; // ✅
     const id = Number(req.params.id);
     const body = updateProgramSchema.parse(req.body);
 
@@ -70,7 +70,7 @@ export async function deleteProgramController(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const tenantId = (req as any).tenantId; // ✅
+  const tenantId = req.tenantId; // ✅
   const id = Number(req.params.id);
 
   const result = await deleteProgram(id, tenantId); // ✅

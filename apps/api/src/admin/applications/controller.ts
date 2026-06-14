@@ -12,7 +12,7 @@ export async function createApplicationController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId as number;
+        const tenantId = req.tenantId;
         const body = req.body as {
             customer_id: number;
             vehicle_id: number;
@@ -33,7 +33,7 @@ export async function getApplicationsController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId as number;
+        const tenantId = req.tenantId;
         const data = await getApplications(tenantId);
         return reply.send({ success: true, data });
     } catch (err: any) {
@@ -46,7 +46,7 @@ export async function updateApplicationStatusController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId as number;
+        const tenantId = req.tenantId;
         const id = Number(req.params.id);
         const { status } = req.body as { status: string };
         const result = await updateApplicationStatus(id, status, tenantId);

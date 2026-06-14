@@ -2,14 +2,9 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "../../dist/api",
-
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-
+    "outDir": "./dist",
     "verbatimModuleSyntax": true,
-    "isolatedModules": true
+    "sourceMap": true
   },
   "include": ["src"]
 }

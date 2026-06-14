@@ -6,7 +6,15 @@ import crypto from "crypto";
 import "dotenv/config";
 import { db } from "../db/db.js";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "change_me_in_production";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
+  return secret;
+}
+
+const JWT_SECRET: string = getJwtSecret();
 const SALT_ROUNDS = 10;
 
 /* =========================
@@ -73,7 +81,11 @@ export async function loginTenant(email: string, password: string) {
    VERIFY TOKEN
 ========================= */
 export function verifyToken(token: string): { tenantId: number; email: string } {
-    return jwt.verify(token, JWT_SECRET) as { tenantId: number; email: string };
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (typeof payload !== "object" || payload === null || !("tenantId" in payload)) {
+        throw new Error("Invalid token payload");
+    }
+    return payload as { tenantId: number; email: string };
 }
 
 /* =========================

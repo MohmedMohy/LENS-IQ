@@ -51,7 +51,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         { preHandler: authMiddleware },
         async (req, reply) => {
             try {
-                const tenantId = (req as any).tenantId;
+                const tenantId = req.tenantId;
                 const tenant = await getTenantById(tenantId);
                 return reply.send(tenant);
             } catch (err: any) {
@@ -68,7 +68,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         { preHandler: authMiddleware },
         async (req, reply) => {
             try {
-                const tenantId = (req as any).tenantId;
+                const tenantId = req.tenantId;
                 const { name } = req.body;
                 const tenant = await updateTenantProfile(tenantId, name);
                 return reply.send(tenant);
@@ -89,7 +89,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         { preHandler: authMiddleware },
         async (req, reply) => {
             try {
-                const tenantId = (req as any).tenantId;
+                const tenantId = req.tenantId;
                 const { current_password, new_password } = req.body;
 
                 const result = await changeTenantPassword(
@@ -111,7 +111,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         { preHandler: authMiddleware },
         async (req, reply) => {
             try {
-                const tenantId = (req as any).tenantId;
+                const tenantId = req.tenantId;
                 const tenant = await regenerateApiKey(tenantId);
                 return reply.send(tenant);
             } catch (err: any) {

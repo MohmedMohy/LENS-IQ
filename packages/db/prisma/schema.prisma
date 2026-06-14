@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  UNDER_REVIEW
+}
+
+enum JobType {
+  private
+  government
+  corporate
+  freelancer
+  retired
+}
+
+enum VehicleCondition {
+  new
+  used
+}
+
+enum VehicleCategory {
+  sedan
+  suv
+  truck
+  van
+  microbus
+}
+
+enum FinancingType {
+  conventional
+  islamic
+}
+
+enum CalculationMethod {
+  reducing
+  flat
+  murabaha
+}
+
+enum AllowedConditions {
+  new
+  used
+  both
+}
+
+enum PaymentMethod {
+  salary_transfer
+  bank_account
+  cash_proof
+}
+
+model Tenant {
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String   @unique
+  password_hash String
+  api_key       String   @unique
+  active        Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  banks        Bank[]
+  programs     Program[]
+  rules        Rule[]
+  customers    Customer[]
+  vehicles     Vehicle[]
+  applications Application[]
+  offers       Offer[]
+
+  @@map("tenants")
+}
+
+model Bank {
+  id        Int      @id @default(autoincrement())
+  tenant_id Int
+  name      String
+  code      String
+  logo_url  String?
+  active    Boolean  @default(true)
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  programs Program[]
+  offers   Offer[]
+
+  @@index([tenant_id])
+  @@map("banks")
+}
+
+model Program {
+  id                      Int               @id @default(autoincrement())
+  tenant_id               Int
+  bank_id                 Int
+  name                    String
+  financing_type          FinancingType      @default(conventional)
+  calculation_method      CalculationMethod  @default(reducing)
+  min_salary              Float
+  max_customer_age        Int
+  salary_transfer_required Boolean           @default(false)
+  max_car_age             Int               @default(0)
+  allowed_conditions      AllowedConditions  @default(both)
+  max_vehicle_price       Float?
+  interest_rate           Float             @default(0)
+  profit_rate             Float?
+  min_months              Int               @default(12)
+  max_months              Int
+  min_down_payment_percent Float
+  max_finance_amount      Float?
+  admin_fees_percent      Float             @default(0)
+  active                  Boolean           @default(true)
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  bank   Bank   @relation(fields: [bank_id], references: [id])
+  rules  Rule[]
+  offers Offer[]
+
+  @@index([tenant_id])
+  @@index([bank_id])
+  @@map("programs")
+}
+
+model Rule {
+  id         Int    @id @default(autoincrement())
+  tenant_id  Int
+  program_id Int
+  field      String
+  operator   String
+  value      String
+  action     String
+
+  tenant  Tenant  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [program_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([program_id])
+  @@map("rules")
+}
+
+model Customer {
+  id                     Int      @id @default(autoincrement())
+  tenant_id              Int
+  name                   String
+  national_id            String   @default("")
+  phone                  String   @default("")
+  birth_date             String?
+  salary                 Float
+  job_type               String   @default("private")
+  current_liabilities    Float    @default(0)
+  additional_income      Float    @default(0)
+  employer_name          String?
+  employment_tenure_months Int?
+  insurance_number       String?
+  club_membership        String?
+  marital_status         String?
+  owns_property          Boolean  @default(false)
+  owns_car               Boolean  @default(false)
+  salary_transfer        Boolean  @default(false)
+  created_at             DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@index([tenant_id])
+  @@map("customers")
+}
+
+model Vehicle {
+  id                 Int              @id @default(autoincrement())
+  tenant_id          Int
+  brand              String
+  model              String
+  manufacturing_year Int
+  condition          String           @default("used")
+  price              Float
+  category           String?
+  created_at         DateTime         @default(now())
+
+  tenant       Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@index([tenant_id])
+  @@map("vehicles")
+}
+
+model Application {
+  id                      Int             @id @default(autoincrement())
+  tenant_id               Int
+  customer_id             Int
+  vehicle_id              Int
+  requested_down_payment  Float
+  requested_months        Int
+  payment_method          String          @default("bank_account")
+  status                  String          @default("PENDING")
+  notes                   String?
+  created_at              DateTime        @default(now())
+  updated_at              DateTime        @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customer_id], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicle_id], references: [id])
+  offers   Offer[]
+
+  @@index([tenant_id])
+  @@index([customer_id])
+  @@index([vehicle_id])
+  @@map("applications")
+}
+
+model Offer {
+  id                 Int      @id @default(autoincrement())
+  tenant_id          Int
+  application_id     Int
+  program_id         Int
+  bank_id            Int
+  status             String   @default("PENDING")
+  installment        Float    @default(0)
+  total_payment      Float    @default(0)
+  finance_amount     Float    @default(0)
+  down_payment       Float    @default(0)
+  interest_rate      Float    @default(0)
+  months             Int      @default(0)
+  dti                Float    @default(0)
+  risk_score         Float    @default(0)
+  risk_level         String   @default("LOW")
+  affordability_score Float   @default(0)
+  reasons            Json?
+  created_at         DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [application_id], references: [id])
+  program     Program     @relation(fields: [program_id], references: [id])
+  bank        Bank        @relation(fields: [bank_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([application_id])
+  @@index([program_id])
+  @@index([bank_id])
+  @@map("offers")
+}

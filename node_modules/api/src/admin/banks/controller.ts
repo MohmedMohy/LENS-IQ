@@ -10,7 +10,7 @@ export async function createBankController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId;
         const body = createBankSchema.parse(req.body);
 
         const result = await createBank(body, tenantId);
@@ -26,7 +26,7 @@ export async function getBanksController(
     req: FastifyRequest,
     reply: FastifyReply
 ) {
-    const tenantId = (req as any).tenantId;
+    const tenantId = req.tenantId;
     const data = await getBanks(tenantId);
     return reply.send(data);
 }
@@ -37,7 +37,7 @@ export async function updateBankController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId;
         const id = Number(req.params.id);
         const body = updateBankSchema.parse(req.body);
 
@@ -55,7 +55,7 @@ export async function deleteBankController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId;
         const id = Number(req.params.id);
 
         const result = await deleteBank(id, tenantId);

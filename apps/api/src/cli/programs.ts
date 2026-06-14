@@ -1,7 +1,7 @@
 export const testProgram = {
     id: 1,
     bankId: 1,
-    interestRate: 0.12,
-    minDownPaymentPercent: 10,
+    interestRate: 14.5,
+    minDownPaymentPercent: 20,
     maxMonths: 60,
 };

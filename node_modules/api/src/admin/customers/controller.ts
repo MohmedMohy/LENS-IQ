@@ -24,7 +24,7 @@ export async function createCustomerController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const customer = await createCustomer(request.body, tenantId);
         return reply.code(201).send({ success: true, data: customer });
     } catch (err: any) {
@@ -37,7 +37,7 @@ export async function getCustomersController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const customers = await getCustomers(tenantId);
         return reply.send({ success: true, data: customers });
     } catch (err: any) {
@@ -50,7 +50,7 @@ export async function getCustomerByIdController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const customer = await getCustomerById(Number(request.params.id), tenantId);
         return reply.send({ success: true, data: customer });
     } catch (err: any) {
@@ -64,7 +64,7 @@ export async function updateCustomerController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         const updated = await updateCustomer(Number(request.params.id), request.body, tenantId);
         return reply.send({ success: true, data: updated });
     } catch (err: any) {
@@ -78,7 +78,7 @@ export async function deleteCustomerController(
     reply: FastifyReply
 ) {
     try {
-        const tenantId = (request as any).tenantId as number;
+        const tenantId = request.tenantId;
         await deleteCustomer(Number(request.params.id), tenantId);
         return reply.send({ success: true, message: `Customer ${request.params.id} deleted` });
     } catch (err: any) {

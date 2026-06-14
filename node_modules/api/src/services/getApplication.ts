@@ -1,7 +1,7 @@
 // src/services/getApplication.ts
 
 import { db } from "../db/db.js";
-import type { ApplicationInput } from "../shared/types/input.js";
+import type { ApplicationInput } from "../shared/types/applicationInput.js";
 
 export async function getApplicationById(
   id: number,
