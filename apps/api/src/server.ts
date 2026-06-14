@@ -5,6 +5,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 
 import { authRoutes } from "./auth/auth.routes.js";
 import { banksRoutes } from "./admin/banks/routes.js";
@@ -21,7 +22,22 @@ import { sendError } from "./shared/response.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const FRONTEND_DIST = path.join(__dirname, "..", "..", "admin-dashboard", "dist");
+function findFrontendDist(): string {
+  if (process.env.FRONTEND_DIST) return process.env.FRONTEND_DIST;
+  const candidates = [
+    // Docker: /app/dist -> /app/admin-dashboard/dist
+    path.join(__dirname, "..", "admin-dashboard", "dist"),
+    // Local (compiled): apps/api/dist -> admin-dashboard/dist
+    path.join(__dirname, "..", "..", "..", "admin-dashboard", "dist"),
+    // Local (tsx): apps/api/src -> admin-dashboard/dist
+    path.join(__dirname, "..", "..", "..", "admin-dashboard", "dist"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return candidates[0];
+}
+const FRONTEND_DIST = findFrontendDist();
 const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/public", "/health"];
 
 const PORT = Number(process.env.PORT) || 3000;
