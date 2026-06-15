@@ -4,30 +4,46 @@ const { Pool } = pg;
 
 const isProduction = process.env.NODE_ENV === "production";
 
-const poolConfig: pg.PoolConfig = {
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: Number(process.env.DB_PORT) || 5432,
-  max: isProduction ? 20 : 10,
-  idleTimeoutMillis: isProduction ? 30000 : 10000,
-  connectionTimeoutMillis: isProduction ? 10000 : 5000,
-};
+const ssl = isProduction ? { rejectUnauthorized: false } : undefined;
 
-if (!isProduction) {
-  poolConfig.user ??= "postgres";
-  poolConfig.host ??= "localhost";
-  poolConfig.database ??= "car_financing_system";
-  poolConfig.password ??= "admin123";
-}
+let poolConfig: pg.PoolConfig;
 
-if (isProduction && !poolConfig.password) {
-  throw new Error("DB_PASSWORD environment variable is required in production");
-}
+if (process.env.DATABASE_URL) {
+  poolConfig = {
+    connectionString: process.env.DATABASE_URL,
+    max: isProduction ? 20 : 10,
+    idleTimeoutMillis: isProduction ? 30000 : 10000,
+    connectionTimeoutMillis: isProduction ? 10000 : 5000,
+    ssl,
+  };
+} else {
+  poolConfig = {
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: Number(process.env.DB_PORT) || 5432,
+    max: isProduction ? 20 : 10,
+    idleTimeoutMillis: isProduction ? 30000 : 10000,
+    connectionTimeoutMillis: isProduction ? 10000 : 5000,
+    ssl,
+  };
 
-if (isProduction && !poolConfig.user) {
-  throw new Error("DB_USER environment variable is required in production");
+  if (!isProduction) {
+    poolConfig.user ??= "postgres";
+    poolConfig.host ??= "localhost";
+    poolConfig.database ??= "car_financing_system";
+    poolConfig.password ??= "admin123";
+    poolConfig.ssl = undefined;
+  }
+
+  if (isProduction && !poolConfig.password) {
+    throw new Error("DB_PASSWORD environment variable is required in production");
+  }
+
+  if (isProduction && !poolConfig.user) {
+    throw new Error("DB_USER environment variable is required in production");
+  }
 }
 
 export const db = new Pool(poolConfig);
