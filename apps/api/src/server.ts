@@ -7,6 +7,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 
+process.on("unhandledRejection", (reason) => {
+  console.error("UNHANDLED REJECTION:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+
 import { authRoutes } from "./auth/auth.routes.js";
 import { banksRoutes } from "./admin/banks/routes.js";
 import { programsRoutes } from "./admin/programs/routes.js";

@@ -4,7 +4,29 @@ const { Pool } = pg;
 
 const isProduction = process.env.NODE_ENV === "production";
 
-const ssl = isProduction ? { rejectUnauthorized: false } : undefined;
+function shouldUseSsl(): pg.PoolConfig["ssl"] {
+  // Explicit override via PGSSLMODE env var
+  const sslMode = process.env.PGSSLMODE;
+  if (sslMode === "require") return { rejectUnauthorized: true };
+  if (sslMode === "no-verify" || sslMode === "prefer") return { rejectUnauthorized: false };
+  if (sslMode === "disable") return undefined;
+
+  // Auto-detect from DATABASE_URL
+  const url = process.env.DATABASE_URL || "";
+  if (url.includes("sslmode=require") || url.includes("sslmode=no-verify")) {
+    return { rejectUnauthorized: url.includes("sslmode=no-verify") };
+  }
+
+  // Railway internal — their Postgres supports SSL
+  if (url.includes(".railway")) return { rejectUnauthorized: false };
+
+  // Production default: try SSL
+  if (isProduction) return { rejectUnauthorized: false };
+
+  return undefined;
+}
+
+const ssl = shouldUseSsl();
 
 let poolConfig: pg.PoolConfig;
 
