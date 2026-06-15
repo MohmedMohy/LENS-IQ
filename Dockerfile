@@ -20,7 +20,7 @@ RUN cd admin-dashboard && npx vite build
 
 FROM base AS runner
 ENV NODE_ENV=production
-ENV PORT=${PORT:-3000}
+ENV PORT=3000
 
 WORKDIR /app
 
