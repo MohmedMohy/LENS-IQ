@@ -32,5 +32,5 @@ COPY --from=builder /app/apps/admin-dashboard/dist ./admin-dashboard/dist
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 COPY --from=builder /app/packages/db/src/seed.ts ./packages/db/src/seed.ts
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 CMD curl -f http://localhost:${PORT}/health || exit 1
-CMD ["/bin/sh", "-c", "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss 2>&1 && npx tsx packages/db/src/seed.ts 2>&1 && node dist/server.js"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 CMD curl -f http://localhost:${PORT}/health || exit 1
+CMD ["node", "dist/server.js"]
