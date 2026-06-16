@@ -70,8 +70,6 @@ await fastify.register(cors, {
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) {
       cb(null, true);
-    } else if (process.env.NODE_ENV === "production") {
-      cb(null, origin);
     } else {
       cb(null, false);
     }
