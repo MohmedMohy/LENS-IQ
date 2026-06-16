@@ -4,49 +4,30 @@ const { Pool } = pg;
 
 const isProduction = process.env.NODE_ENV === "production";
 
-function shouldUseSsl(): pg.PoolConfig["ssl"] {
-  // Explicit override via PGSSLMODE env var
-  const sslMode = process.env.PGSSLMODE;
-  if (sslMode === "require") return { rejectUnauthorized: true };
-  if (sslMode === "no-verify" || sslMode === "prefer") return { rejectUnauthorized: false };
-  if (sslMode === "disable") return undefined;
+function resolvePoolConfig(): pg.PoolConfig {
+  const sslMode = process.env.PGSSLMODE || "";
 
-  // Auto-detect from DATABASE_URL
-  const url = process.env.DATABASE_URL || "";
-  if (url.includes("sslmode=require") || url.includes("sslmode=no-verify")) {
-    return { rejectUnauthorized: url.includes("sslmode=no-verify") };
+  if (process.env.DATABASE_URL) {
+    let url = process.env.DATABASE_URL;
+    // Only inject sslmode if PGSSLMODE is explicitly set and not already in URL
+    if (sslMode && !url.includes("sslmode=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}sslmode=${sslMode}`;
+    }
+    return {
+      connectionString: url,
+      max: isProduction ? 20 : 10,
+      idleTimeoutMillis: isProduction ? 30000 : 10000,
+      connectionTimeoutMillis: isProduction ? 10000 : 5000,
+    };
   }
 
-  // Railway internal — their Postgres supports SSL
-  if (url.includes(".railway")) return { rejectUnauthorized: false };
+  const ssl = sslMode === "require" ? { rejectUnauthorized: true }
+    : sslMode === "no-verify" || sslMode === "prefer" ? { rejectUnauthorized: false }
+    : sslMode === "disable" ? undefined
+    : undefined;
 
-  // Production default: try SSL
-  if (isProduction) return { rejectUnauthorized: false };
-
-  return undefined;
-}
-
-const ssl = shouldUseSsl();
-
-function buildConnectionString(url: string): string {
-  if (ssl && !url.includes("sslmode=")) {
-    const sep = url.includes("?") ? "&" : "?";
-    return `${url}${sep}sslmode=no-verify`;
-  }
-  return url;
-}
-
-let poolConfig: pg.PoolConfig;
-
-if (process.env.DATABASE_URL) {
-  poolConfig = {
-    connectionString: buildConnectionString(process.env.DATABASE_URL),
-    max: isProduction ? 20 : 10,
-    idleTimeoutMillis: isProduction ? 30000 : 10000,
-    connectionTimeoutMillis: isProduction ? 10000 : 5000,
-  };
-} else {
-  poolConfig = {
+  const cfg: pg.PoolConfig = {
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
@@ -59,21 +40,25 @@ if (process.env.DATABASE_URL) {
   };
 
   if (!isProduction) {
-    poolConfig.user ??= "postgres";
-    poolConfig.host ??= "localhost";
-    poolConfig.database ??= "car_financing_system";
-    poolConfig.password ??= "admin123";
-    poolConfig.ssl = undefined;
+    cfg.user ??= "postgres";
+    cfg.host ??= "localhost";
+    cfg.database ??= "car_financing_system";
+    cfg.password ??= "admin123";
+    cfg.ssl = undefined;
   }
 
-  if (isProduction && !poolConfig.password) {
+  if (isProduction && !cfg.password) {
     throw new Error("DB_PASSWORD environment variable is required in production");
   }
 
-  if (isProduction && !poolConfig.user) {
+  if (isProduction && !cfg.user) {
     throw new Error("DB_USER environment variable is required in production");
   }
+
+  return cfg;
 }
+
+const poolConfig = resolvePoolConfig();
 
 export const db = new Pool(poolConfig);
 
