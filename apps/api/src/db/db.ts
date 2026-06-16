@@ -28,15 +28,22 @@ function shouldUseSsl(): pg.PoolConfig["ssl"] {
 
 const ssl = shouldUseSsl();
 
+function buildConnectionString(url: string): string {
+  if (ssl && !url.includes("sslmode=")) {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}sslmode=no-verify`;
+  }
+  return url;
+}
+
 let poolConfig: pg.PoolConfig;
 
 if (process.env.DATABASE_URL) {
   poolConfig = {
-    connectionString: process.env.DATABASE_URL,
+    connectionString: buildConnectionString(process.env.DATABASE_URL),
     max: isProduction ? 20 : 10,
     idleTimeoutMillis: isProduction ? 30000 : 10000,
     connectionTimeoutMillis: isProduction ? 10000 : 5000,
-    ssl,
   };
 } else {
   poolConfig = {
