@@ -10,21 +10,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
-    "paths": {
-      "@lens/types": ["packages/types/src"],
-      "@lens/types/*": ["packages/types/src/*"],
-      "@lens/db": ["packages/db/src"],
-      "@lens/db/*": ["packages/db/src/*"],
-      "@lens/utils": ["packages/utils/src"],
-      "@lens/utils/*": ["packages/utils/src/*"],
-      "@lens/config": ["packages/config/src"],
-      "@lens/config/*": ["packages/config/src/*"],
-      "@lens/ui": ["packages/ui/src"],
-      "@lens/ui/*": ["packages/ui/src/*"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
   "exclude": ["node_modules", "dist", ".turbo"]
 }
