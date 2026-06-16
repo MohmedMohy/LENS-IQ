@@ -11,6 +11,7 @@ FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOST=0.0.0.0
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules

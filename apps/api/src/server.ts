@@ -29,20 +29,22 @@ import { sendError } from "./shared/response.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function findFrontendDist(): string {
+function findFrontendDist(): string | null {
   if (process.env.FRONTEND_DIST) return process.env.FRONTEND_DIST;
   const candidates = [
-    // Docker: /app/dist -> /app/admin-dashboard/dist
+    // Combined Docker: /app/dist -> /app/admin-dashboard/dist
     path.join(__dirname, "..", "admin-dashboard", "dist"),
-    // Local (compiled): apps/api/dist -> admin-dashboard/dist
-    path.join(__dirname, "..", "..", "..", "admin-dashboard", "dist"),
-    // Local (tsx): apps/api/src -> admin-dashboard/dist
+    // Combined Docker (new layout): /app/dist -> /app/apps/admin-dashboard/dist
+    path.join(__dirname, "..", "..", "apps", "admin-dashboard", "dist"),
+    // Local (apps/api/src -> apps/admin-dashboard/dist)
+    path.join(__dirname, "..", "..", "admin-dashboard", "dist"),
+    // Old location (apps/api/dist -> admin-dashboard/dist)
     path.join(__dirname, "..", "..", "..", "admin-dashboard", "dist"),
   ];
   for (const p of candidates) {
     if (existsSync(p)) return p;
   }
-  return candidates[0];
+  return null;
 }
 const FRONTEND_DIST = findFrontendDist();
 const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/public", "/health"];
