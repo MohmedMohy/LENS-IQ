@@ -10,7 +10,6 @@
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
-    "healthcheckInterval": 30,
-    "release": "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss && npx tsx packages/db/src/seed.ts"
+    "healthcheckInterval": 30
   }
 }
