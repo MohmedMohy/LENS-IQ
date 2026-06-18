@@ -12,8 +12,8 @@ export async function createApplication(data: {
 }, tenantId: number) {
     const result = await db.query(
         `INSERT INTO applications
-     (tenant_id, customer_id, vehicle_id, requested_down_payment, requested_months, payment_method, notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+     (tenant_id, customer_id, vehicle_id, requested_down_payment, requested_months, payment_method, notes, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,NOW()) RETURNING *`,
         [
             tenantId,
             data.customer_id,
