@@ -17,7 +17,7 @@ export default function TableSkeleton({ rows = 5, columns = 5 }: TableSkeletonPr
               </th>
             ))}
             <th className="px-4 py-3">
-              <Skeleton className="ml-auto h-3 w-16" />
+              <Skeleton className="ms-auto h-3 w-16" />
             </th>
           </tr>
         </thead>

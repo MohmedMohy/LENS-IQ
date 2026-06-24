@@ -227,3 +227,29 @@ button, input, select, textarea {
   --status-bg: rgba(239, 68, 68, 0.08);
   --status-text: #DC2626;
 }
+
+/* RTL Support */
+[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+[dir="rtl"] .sidebar-icon {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] table th,
+[dir="rtl"] table td {
+  text-align: start;
+}
+
+@media (max-width: 1023px) {
+  [dir="rtl"] .lg\:me-60 {
+    margin-inline-end: 0;
+  }
+}
+
+/* Fix for MUI in RTL if ever used */
+[dir="rtl"] .MuiTable-root,
+[dir="rtl"] .MuiTableCell-root {
+  direction: inherit;
+}

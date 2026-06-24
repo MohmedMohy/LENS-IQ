@@ -20,7 +20,7 @@ export default function Card({
       className={[
         "glass-card",
         hover ? "glass-hover" : "",
-        onClick ? "w-full text-left cursor-pointer" : "",
+        onClick ? "w-full text-start cursor-pointer" : "",
         "p-5",
         className,
       ].join(" ")}

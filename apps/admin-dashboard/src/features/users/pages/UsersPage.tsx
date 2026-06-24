@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
@@ -48,6 +49,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 export default function UsersPage() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const tenant = useAuthStore((s) => s.tenant);
     const isAdmin = tenant?.role === "ADMIN";
@@ -177,17 +179,17 @@ export default function UsersPage() {
     return (
         <Layout>
             <PageHeader
-                title={isAdmin ? "Users" : "My Team"}
-                description={isAdmin ? "Manage team members and their roles" : "View and manage your team members"}
+                title={isAdmin ? t("users.title") : t("users.myTeam")}
+                description={isAdmin ? t("users.description") : t("users.teamDescription")}
                 action={isAdmin && !showCreate ? () => setShowCreate(true) : undefined}
-                actionLabel={isAdmin ? "+ Add User" : undefined}
+                actionLabel={isAdmin ? t("users.addUser") : undefined}
             />
 
             {showCreate && isAdmin && (
                 <Card className="mb-6">
                     <div className="p-6">
-                        <h3 className="text-lg font-semibold text-slate-800">New User</h3>
-                        <p className="mb-6 text-sm text-slate-500">Add a new team member under your dealership.</p>
+                        <h3 className="text-lg font-semibold text-slate-800">{t("users.newUser")}</h3>
+                        <p className="mb-6 text-sm text-slate-500">{t("users.newUserDesc")}</p>
 
                         <form
                             onSubmit={createForm.handleSubmit((data) =>
@@ -263,9 +265,9 @@ export default function UsersPage() {
                 <Card className="mb-6">
                     <div className="flex items-center justify-between p-6">
                         <div>
-                            <h3 className="text-sm font-semibold text-slate-700">User Limit</h3>
+                            <h3 className="text-sm font-semibold text-slate-700">{t("users.userLimit")}</h3>
                             <p className="mt-1 text-sm text-slate-500">
-                                {users.length} / {tenant?.max_users ?? 99} active users
+                                {users.length} / {tenant?.max_users ?? 99} {t("users.activeUsers")}
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -283,7 +285,7 @@ export default function UsersPage() {
                                 disabled={maxUsersMutation.isPending || maxUsersInput === tenant?.max_users}
                                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                             >
-                                {maxUsersMutation.isPending ? "Saving..." : "Set Limit"}
+                                {maxUsersMutation.isPending ? t("common.saving") : t("users.setLimit")}
                             </button>
                         </div>
                     </div>
@@ -312,8 +314,8 @@ export default function UsersPage() {
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
                         {isAdmin ? (
                             <>
-                                <h3 className="text-lg font-semibold text-slate-800">Edit User</h3>
-                                <p className="mb-6 text-sm text-slate-500">Update user information and settings.</p>
+                                <h3 className="text-lg font-semibold text-slate-800">{t("users.editUser")}</h3>
+                                <p className="mb-6 text-sm text-slate-500">{t("users.editUserDesc")}</p>
 
                                 <form
                                     onSubmit={editForm.handleSubmit((data) =>

@@ -41,7 +41,7 @@ export default function LoginPage() {
         className="hidden flex-col justify-between p-12 lg:flex lg:w-[45%]"
         style={{
           background: "linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(30,27,75,0.95) 100%)",
-          borderLeft: "1px solid var(--glass-border)",
+          borderInlineStart: "1px solid var(--glass-border)",
         }}
       >
         <div>

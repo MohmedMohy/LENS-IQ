@@ -209,7 +209,7 @@ export default function Sidebar() {
             style={{
               background: "linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(30,27,75,0.95) 100%)",
               backdropFilter: "blur(20px)",
-              borderLeft: "1px solid var(--glass-border)",
+              borderInlineStart: "1px solid var(--glass-border)",
               boxShadow: "var(--glass-shadow-lg)",
             }}
           >

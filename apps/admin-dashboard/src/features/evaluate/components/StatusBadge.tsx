@@ -29,7 +29,7 @@ export default function StatusBadge({ status, size = "md" }: Props) {
       }}
     >
       <span
-        className="mr-1.5 h-1.5 w-1.5 rounded-full"
+        className="me-1.5 h-1.5 w-1.5 rounded-full"
         style={{ background: "var(--status-color)" }}
       />
       {c.label}

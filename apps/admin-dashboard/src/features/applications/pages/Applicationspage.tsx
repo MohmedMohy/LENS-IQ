@@ -361,7 +361,7 @@ export default function ApplicationsPage() {
         mutationFn: ({ id, status }: { id: number; status: ApplicationStatus }) =>
             applicationsApi.updateStatus(id, status),
         onMutate: ({ id }) => setUpdatingId(id),
-        onSuccess: (_data, { status }) => {
+        onSuccess: () => {
             setUpdatingId(null);
             void invalidate();
             toast.success(t("toasts.updated"));
@@ -392,21 +392,21 @@ export default function ApplicationsPage() {
                 : true
         );
 
-    const filters: { label: string; value: ApplicationStatus | "all" }[] = [
-        { label: "All", value: "all" },
-        { label: "Pending", value: "PENDING" },
-        { label: "Approved", value: "APPROVED" },
-        { label: "Rejected", value: "REJECTED" },
-        { label: "Cancelled", value: "CANCELLED" },
+    const filters: { label: () => string; value: ApplicationStatus | "all" }[] = [
+        { label: () => t("applications.all"), value: "all" },
+        { label: () => t("applications.pending"), value: "PENDING" },
+        { label: () => t("applications.approved"), value: "APPROVED" },
+        { label: () => t("applications.rejected"), value: "REJECTED" },
+        { label: () => t("applications.cancelled"), value: "CANCELLED" },
     ];
 
     return (
         <Layout>
             <PageHeader
-                title="Applications"
-                description="Manage financing applications from customers."
+                title={t("applications.title")}
+                description={t("applications.description")}
                 action={isWriteRole ? () => setShowForm((v) => !v) : undefined}
-                actionLabel={showForm ? "Cancel" : "+ New Application"}
+                actionLabel={showForm ? t("common.cancel") : t("applications.newApplication")}
             />
 
             {/* Status filter tabs */}
@@ -424,7 +424,7 @@ export default function ApplicationsPage() {
                                     : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
-                            {f.label} ({count})
+                                                    {f.label()} ({count})
                         </button>
                     );
                 })}
@@ -432,10 +432,10 @@ export default function ApplicationsPage() {
 
             {showForm && (
                 <Card className="mb-6">
-                    <p className="mb-4 text-sm font-semibold text-slate-700">New Application</p>
+                    <p className="mb-4 text-sm font-semibold text-slate-700">{t("applications.createApplication")}</p>
                     {customers.length === 0 || vehicles.length === 0 ? (
                         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                            You need at least one customer and one vehicle to create an application.
+                            {t("applications.needCustomer")}
                         </p>
                     ) : (
                         <ApplicationForm
@@ -455,7 +455,7 @@ export default function ApplicationsPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by customer name or vehicle..."
+                    placeholder={t("applications.search")}
                     className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
             </Card>
@@ -471,13 +471,13 @@ export default function ApplicationsPage() {
             ) : filtered.length === 0 ? (
                 <Card>
                     <p className="py-8 text-center text-sm text-slate-500">
-                        No applications{filterStatus !== "all" ? ` with status ${filterStatus.toLowerCase()}` : ""}.
+                        {t("common.noData")}
                     </p>
                 </Card>
             ) : (
                 <div className="space-y-3">
                     <p className="text-sm font-medium text-slate-500">
-                        {filtered.length} application{filtered.length !== 1 ? "s" : ""}
+                        {t("common.results")}: {filtered.length}
                     </p>
                     {filtered.map((app) => (
                         <ApplicationCard

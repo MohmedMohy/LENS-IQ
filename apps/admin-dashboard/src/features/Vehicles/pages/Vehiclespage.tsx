@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
@@ -190,6 +191,7 @@ function ConditionBadge({ condition }: { condition: Vehicle["condition"] }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function VehiclesPage() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const tenant = useAuthStore((s) => s.tenant);
     const isWriteRole = tenant?.role === "ADMIN" || tenant?.role === "MANAGER";
@@ -255,18 +257,18 @@ export default function VehiclesPage() {
     return (
         <Layout>
             <PageHeader
-                title="Vehicles"
-                description="Manage vehicle inventory available for financing."
+                title={t("vehicles.title")}
+                description={t("vehicles.description")}
                 action={isWriteRole ? () => setShowForm((v) => !v) : undefined}
-                actionLabel={showForm ? "Cancel" : "+ Add Vehicle"}
+                actionLabel={showForm ? t("common.cancel") : t("vehicles.addVehicle")}
             />
 
             {/* Stats */}
             <div className="mb-6 flex gap-3">
                 {[
-                    { label: "Total", count: vehicles.length, active: filterCondition === "all", onClick: () => setFilterCondition("all") },
-                    { label: "New", count: newCount, active: filterCondition === "new", onClick: () => setFilterCondition("new") },
-                    { label: "Used", count: usedCount, active: filterCondition === "used", onClick: () => setFilterCondition("used") },
+                    { label: t("vehicles.total"), count: vehicles.length, active: filterCondition === "all", onClick: () => setFilterCondition("all") },
+                    { label: t("vehicles.new"), count: newCount, active: filterCondition === "new", onClick: () => setFilterCondition("new") },
+                    { label: t("vehicles.used"), count: usedCount, active: filterCondition === "used", onClick: () => setFilterCondition("used") },
                 ].map((s) => (
                     <button
                         key={s.label}
@@ -285,11 +287,11 @@ export default function VehiclesPage() {
 
             {isWriteRole && showForm && (
                 <Card className="mb-6">
-                    <p className="mb-4 text-sm font-semibold text-slate-700">New Vehicle</p>
+                    <p className="mb-4 text-sm font-semibold text-slate-700">{t("vehicles.newVehicle")}</p>
                     <VehicleForm
                         saving={createMutation.isPending}
                         error={formError}
-                        submitLabel="Add Vehicle"
+                        submitLabel={t("vehicles.addVehicle")}
                         onSubmit={(data) =>
                             createMutation.mutate({ 
                                 ...data, 
@@ -306,7 +308,7 @@ export default function VehiclesPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by brand or model..."
+                    placeholder={t("vehicles.search")}
                     className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
             </Card>
@@ -323,19 +325,19 @@ export default function VehiclesPage() {
                 <Card>
                     <div className="mb-3">
                         <p className="text-sm font-medium text-slate-500">
-                            {filtered.length} vehicle{filtered.length !== 1 ? "s" : ""}
+                            {t("common.results")}: {filtered.length}
                         </p>
                     </div>
                     <DataTable<Vehicle>
                         data={filtered}
                         columns={[
-                            { key: "id", label: "ID" },
-                            { key: "brand", label: "Brand" },
-                            { key: "model", label: "Model" },
-                            { key: "manufacturing_year", label: "Year" },
-                            { key: "condition", label: "Condition" },
-                            { key: "price", label: "Price (EGP)" },
-                            { key: "category", label: "Category" },
+                            { key: "id", label: t("common.id") },
+                            { key: "brand", label: t("vehicles.brand") },
+                            { key: "model", label: t("vehicles.model") },
+                            { key: "manufacturing_year", label: t("vehicles.year") },
+                            { key: "condition", label: t("vehicles.new") },
+                            { key: "price", label: t("vehicles.price") },
+                            { key: "category", label: t("vehicles.category") },
                         ]}
                         onEdit={isWriteRole ? (v) => setEditingVehicle(v) : undefined}
                         onDelete={isWriteRole ? (v) => deleteMutation.mutate(v) : undefined}
@@ -346,7 +348,7 @@ export default function VehiclesPage() {
             {editingVehicle && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-                        <h2 className="mb-1 text-xl font-bold text-slate-900">Edit Vehicle</h2>
+                        <h2 className="mb-1 text-xl font-bold text-slate-900">{t("vehicles.editVehicle")}</h2>
                         <p className="mb-6 flex items-center gap-2 text-sm text-slate-500">
                             {editingVehicle.brand} {editingVehicle.model} · {editingVehicle.manufacturing_year}
                             <ConditionBadge condition={editingVehicle.condition} />

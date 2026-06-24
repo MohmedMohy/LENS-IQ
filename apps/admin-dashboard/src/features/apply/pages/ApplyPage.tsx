@@ -126,7 +126,7 @@ function Step1({
                         type="button"
                         onClick={() => onSelect(v.id)}
                         className={[
-                            "rounded-2xl border-2 p-4 text-right transition-all",
+                            "rounded-2xl border-2 p-4 text-start transition-all",
                             selected
                                 ? "border-blue-500 bg-blue-50 shadow-md"
                                 : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm",
@@ -141,7 +141,7 @@ function Step1({
                                         : "border-slate-300",
                                 ].join(" ")}
                             />
-                            <div className="text-right">
+                            <div className="text-start">
                                 <p className="font-bold text-slate-900">
                                     {v.brand} {v.model}
                                 </p>
