@@ -45,6 +45,8 @@ export interface Program {
 
   minDownPaymentPercent: number;
 
+  maxDownPaymentPercent: number;
+
   maxFinanceAmount: number | null;
 
   adminFeesPercent: number;

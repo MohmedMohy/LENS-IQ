@@ -1,17 +1,12 @@
-const getApiUrl = () => {
+function getApiUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) return envUrl.replace(/\/+$/, "");
-
-  if (typeof window !== "undefined") {
-    const { hostname, protocol } = window.location;
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return `${protocol}//${hostname}`;
-    }
+  if (envUrl && typeof envUrl === "string") {
+    return envUrl.replace(/\/+$/, "");
   }
 
-  return "http://localhost:3000";
-};
+  return "";
+}
 
 export const ENV = {
   API_URL: getApiUrl(),
-};
+} as const;

@@ -1,35 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
 import Card from "@/components/ui/card/Card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { banksApi } from "@/features/banks/api/banks.api";
 import { programsApi } from "@/features/programs/api/programs.api";
 import type {
     Bank, Program, CreateProgramPayload, UpdateProgramPayload,
     FinancingType, CalculationMethod, AllowedConditions,
 } from "@/types";
+import { useAuthStore } from "@/store/auth.store";
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const FINANCING_TYPES: { value: FinancingType; label: string }[] = [
-    { value: "conventional", label: "Conventional" },
-    { value: "islamic", label: "Islamic" },
+const FINANCING_TYPES: { value: FinancingType }[] = [
+    { value: "conventional" },
+    { value: "islamic" },
 ];
 
-const CALC_METHODS: { value: CalculationMethod; label: string }[] = [
-    { value: "reducing", label: "Reducing Balance" },
-    { value: "flat", label: "Flat Rate" },
-    { value: "murabaha", label: "Murabaha" },
+const CALC_METHODS: { value: CalculationMethod }[] = [
+    { value: "reducing" },
+    { value: "flat" },
+    { value: "murabaha" },
 ];
 
-const CONDITIONS: { value: AllowedConditions; label: string }[] = [
-    { value: "both", label: "New & Used" },
-    { value: "new", label: "New Only" },
-    { value: "used", label: "Used Only" },
+const CONDITIONS: { value: AllowedConditions }[] = [
+    { value: "both" },
+    { value: "new" },
+    { value: "used" },
 ];
-
-// ── Default form values ───────────────────────────────────────────────────────
 
 type FormState = Omit<CreateProgramPayload, "id">;
 
@@ -51,13 +50,12 @@ function defaultForm(bankId = ""): FormState & { bank_id_str: string } {
         min_months: 12,
         max_months: 60,
         min_down_payment_percent: 10,
+        max_down_payment_percent: 100,
         max_finance_amount: null,
         admin_fees_percent: 0,
         active: true,
     };
 }
-
-// ── Section header ────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
@@ -66,8 +64,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
         </p>
     );
 }
-
-// ── Reusable field ────────────────────────────────────────────────────────────
 
 function Field({
     label, children,
@@ -89,8 +85,6 @@ const INPUT_CLS =
 const SELECT_CLS =
     "rounded-xl border border-slate-300 px-4 py-2.5 font-normal outline-none transition focus:border-blue-500 bg-white";
 
-// ── Program Form ──────────────────────────────────────────────────────────────
-
 type ProgramFormProps = {
     banks: Bank[];
     initial: FormState & { bank_id_str: string };
@@ -104,6 +98,7 @@ type ProgramFormProps = {
 function ProgramForm({
     banks, initial, saving, error, submitLabel, onSubmit, onCancel,
 }: ProgramFormProps) {
+    const { t } = useTranslation();
     const [f, setF] = useState(initial);
 
     const set = <K extends keyof typeof f>(k: K, v: typeof f[K]) =>
@@ -132,20 +127,43 @@ function ProgramForm({
             min_months: f.min_months,
             max_months: f.max_months,
             min_down_payment_percent: f.min_down_payment_percent,
+            max_down_payment_percent: f.max_down_payment_percent,
             max_finance_amount: f.max_finance_amount || null,
             admin_fees_percent: f.admin_fees_percent,
             active: f.active,
         });
     };
 
+    const financingLabel = (v: FinancingType) => {
+        switch (v) {
+            case "conventional": return t("programs.conventional");
+            case "islamic": return t("programs.islamic");
+        }
+    };
+
+    const calcLabel = (v: CalculationMethod) => {
+        switch (v) {
+            case "reducing": return t("programs.reducingBalance");
+            case "flat": return t("programs.flatRate");
+            case "murabaha": return t("programs.murabaha");
+        }
+    };
+
+    const conditionLabel = (v: AllowedConditions) => {
+        switch (v) {
+            case "both": return t("programs.newAndUsed");
+            case "new": return t("programs.newOnly");
+            case "used": return t("programs.usedOnly");
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-                {/* ── Identity ── */}
-                <SectionLabel>Program Identity</SectionLabel>
+                <SectionLabel>{t("programs.programIdentity")}</SectionLabel>
 
-                <Field label="Program Name">
+                <Field label={t("programs.programName")}>
                     <input
                         value={f.name}
                         onChange={(e) => set("name", e.target.value)}
@@ -155,48 +173,47 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Bank">
+                <Field label={t("programs.bank")}>
                     <select
                         value={f.bank_id_str}
                         onChange={(e) => set("bank_id_str", e.target.value)}
                         className={SELECT_CLS}
                         required
                     >
-                        <option value="">Select bank</option>
+                        <option value="">{t("programs.selectBank")}</option>
                         {banks.map((b) => (
                             <option key={b.id} value={String(b.id)}>{b.name}</option>
                         ))}
                     </select>
                 </Field>
 
-                <Field label="Financing Type">
+                <Field label={t("programs.financingType")}>
                     <select
                         value={f.financing_type}
                         onChange={(e) => set("financing_type", e.target.value as FinancingType)}
                         className={SELECT_CLS}
                     >
-                        {FINANCING_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
+                        {FINANCING_TYPES.map((ft) => (
+                            <option key={ft.value} value={ft.value}>{financingLabel(ft.value)}</option>
                         ))}
                     </select>
                 </Field>
 
-                <Field label="Calculation Method">
+                <Field label={t("programs.calculationMethod")}>
                     <select
                         value={f.calculation_method}
                         onChange={(e) => set("calculation_method", e.target.value as CalculationMethod)}
                         className={SELECT_CLS}
                     >
                         {CALC_METHODS.map((m) => (
-                            <option key={m.value} value={m.value}>{m.label}</option>
+                            <option key={m.value} value={m.value}>{calcLabel(m.value)}</option>
                         ))}
                     </select>
                 </Field>
 
-                {/* ── Customer Eligibility ── */}
-                <SectionLabel>Customer Eligibility</SectionLabel>
+                <SectionLabel>{t("programs.customerEligibility")}</SectionLabel>
 
-                <Field label="Min Salary (EGP)">
+                <Field label={t("programs.minSalary")}>
                     <input
                         type="number" min={0}
                         value={f.min_salary}
@@ -205,7 +222,7 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Max Customer Age">
+                <Field label={t("programs.maxCustomerAge")}>
                     <input
                         type="number" min={18} max={75}
                         value={f.max_customer_age}
@@ -214,33 +231,32 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Salary Transfer Required">
+                <Field label={t("programs.salaryTransferRequired")}>
                     <select
                         value={f.salary_transfer_required ? "yes" : "no"}
                         onChange={(e) => set("salary_transfer_required", e.target.value === "yes")}
                         className={SELECT_CLS}
                     >
-                        <option value="no">Not Required</option>
-                        <option value="yes">Required</option>
+                        <option value="no">{t("programs.salaryNotRequired")}</option>
+                        <option value="yes">{t("programs.salaryRequired")}</option>
                     </select>
                 </Field>
 
-                {/* ── Vehicle Requirements ── */}
-                <SectionLabel>Vehicle Requirements</SectionLabel>
+                <SectionLabel>{t("programs.vehicleRequirements")}</SectionLabel>
 
-                <Field label="Allowed Conditions">
+                <Field label={t("programs.allowedConditions")}>
                     <select
                         value={f.allowed_conditions}
                         onChange={(e) => set("allowed_conditions", e.target.value as AllowedConditions)}
                         className={SELECT_CLS}
                     >
                         {CONDITIONS.map((c) => (
-                            <option key={c.value} value={c.value}>{c.label}</option>
+                            <option key={c.value} value={c.value}>{conditionLabel(c.value)}</option>
                         ))}
                     </select>
                 </Field>
 
-                <Field label="Max Car Age (years)">
+                <Field label={t("programs.maxCarAge")}>
                     <input
                         type="number" min={0}
                         value={f.max_car_age}
@@ -249,23 +265,22 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Max Vehicle Price (EGP) — optional">
+                <Field label={t("programs.maxVehiclePrice")}>
                     <input
                         type="number" min={0}
                         value={f.max_vehicle_price ?? ""}
                         onChange={(e) =>
                             set("max_vehicle_price", e.target.value ? Number(e.target.value) : null)
                         }
-                        placeholder="No limit"
+                        placeholder={t("programs.noLimit")}
                         className={INPUT_CLS}
                     />
                 </Field>
 
-                {/* ── Financial Terms ── */}
-                <SectionLabel>Financial Terms</SectionLabel>
+                <SectionLabel>{t("programs.financialTerms")}</SectionLabel>
 
                 {isIslamic ? (
-                    <Field label="Profit Rate (0–1)">
+                    <Field label={t("programs.profitRate")}>
                         <input
                             type="number" step="0.001" min={0} max={1}
                             value={f.profit_rate ?? ""}
@@ -277,7 +292,7 @@ function ProgramForm({
                         />
                     </Field>
                 ) : (
-                    <Field label="Interest Rate (0–1)">
+                    <Field label={t("programs.interestRateLabel")}>
                         <input
                             type="number" step="0.001" min={0} max={1}
                             value={f.interest_rate}
@@ -288,7 +303,7 @@ function ProgramForm({
                     </Field>
                 )}
 
-                <Field label="Min Months">
+                <Field label={t("programs.minMonths")}>
                     <input
                         type="number" min={1}
                         value={f.min_months}
@@ -297,7 +312,7 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Max Months">
+                <Field label={t("programs.maxMonths")}>
                     <input
                         type="number" min={1}
                         value={f.max_months}
@@ -306,7 +321,7 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Min Down Payment (%)">
+                <Field label={t("programs.minDownPayment")}>
                     <input
                         type="number" step="0.01" min={0} max={100}
                         value={f.min_down_payment_percent}
@@ -315,7 +330,16 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Admin Fees (%)">
+                <Field label={t("programs.maxDownPayment")}>
+                    <input
+                        type="number" step="0.01" min={0} max={100}
+                        value={f.max_down_payment_percent}
+                        onChange={(e) => set("max_down_payment_percent", Number(e.target.value))}
+                        className={INPUT_CLS}
+                    />
+                </Field>
+
+                <Field label={t("programs.adminFees")}>
                     <input
                         type="number" step="0.01" min={0} max={100}
                         value={f.admin_fees_percent}
@@ -324,20 +348,19 @@ function ProgramForm({
                     />
                 </Field>
 
-                <Field label="Max Finance Amount (EGP) — optional">
+                <Field label={t("programs.maxFinanceAmount")}>
                     <input
                         type="number" min={0}
                         value={f.max_finance_amount ?? ""}
                         onChange={(e) =>
                             set("max_finance_amount", e.target.value ? Number(e.target.value) : null)
                         }
-                        placeholder="No limit"
+                        placeholder={t("programs.noLimit")}
                         className={INPUT_CLS}
                     />
                 </Field>
 
-                {/* ── Status ── */}
-                <SectionLabel>Status</SectionLabel>
+                <SectionLabel>{t("common.status")}</SectionLabel>
 
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 col-span-full">
                     <input
@@ -346,7 +369,7 @@ function ProgramForm({
                         onChange={(e) => set("active", e.target.checked)}
                         className="h-4 w-4"
                     />
-                    Active
+                    {t("common.active")}
                 </label>
             </div>
 
@@ -363,7 +386,7 @@ function ProgramForm({
                         onClick={onCancel}
                         className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                        Cancel
+                        {t("common.cancel")}
                     </button>
                 )}
                 <button
@@ -371,16 +394,17 @@ function ProgramForm({
                     disabled={saving || banks.length === 0}
                     className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                    {saving ? "Saving..." : submitLabel}
+                    {saving ? t("common.saving") : submitLabel}
                 </button>
             </div>
         </form>
     );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-
 export default function ProgramsPage() {
+    const { t } = useTranslation();
+    const tenant = useAuthStore((s) => s.tenant);
+    const isWriteRole = tenant?.role === "ADMIN" || tenant?.role === "MANAGER";
     const [data, setData] = useState<Program[]>([]);
     const [banks, setBanks] = useState<Bank[]>([]);
     const [loading, setLoading] = useState(true);
@@ -409,7 +433,7 @@ export default function ProgramsPage() {
                 setData(programs);
                 setBanks(bankList);
             } catch {
-                if (mounted) setError("Could not load programs data.");
+                if (mounted) setError(t("programs.loadError"));
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -433,7 +457,7 @@ export default function ProgramsPage() {
             setShowForm(false);
             reload();
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : "Could not add program.");
+            setFormError(err instanceof Error ? err.message : t("programs.createError"));
         } finally {
             setSaving(false);
         }
@@ -448,7 +472,7 @@ export default function ProgramsPage() {
             setEditProgram(null);
             reload();
         } catch (err) {
-            setEditError(err instanceof Error ? err.message : "Could not update program.");
+            setEditError(err instanceof Error ? err.message : t("programs.updateError"));
         } finally {
             setSaving(false);
         }
@@ -460,7 +484,7 @@ export default function ProgramsPage() {
             await programsApi.remove(program.id);
             reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not delete program.");
+            setError(err instanceof Error ? err.message : t("programs.deleteError"));
         }
     };
 
@@ -471,53 +495,51 @@ export default function ProgramsPage() {
         <Layout>
             <div className="p-6">
 
-                {/* ── Header ── */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">
-                            Decision Engine
+                            {t("programs.description")}
                         </p>
-                        <h1 className="mt-1 text-2xl font-bold text-slate-900">Programs</h1>
+                        <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("programs.title")}</h1>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setShowForm((v) => !v)}
-                        className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                        {showForm ? "Cancel" : "+ Add Program"}
-                    </button>
+                    {isWriteRole && (
+                        <button
+                            type="button"
+                            onClick={() => setShowForm((v) => !v)}
+                            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                        >
+                            {showForm ? t("common.cancel") : t("programs.addProgram")}
+                        </button>
+                    )}
                 </div>
 
-                {/* ── Create Form ── */}
-                {showForm && (
+                {isWriteRole && showForm && (
                     <Card className="mb-6">
-                        <p className="mb-4 text-sm font-semibold text-slate-700">New Program</p>
+                        <p className="mb-4 text-sm font-semibold text-slate-700">{t("programs.newProgram")}</p>
                         <ProgramForm
                             banks={banks}
                             initial={defaultForm(String(banks[0]?.id ?? ""))}
                             saving={saving}
                             error={formError}
-                            submitLabel="Add Program"
+                            submitLabel={t("programs.addProgram")}
                             onSubmit={handleCreate}
                             onCancel={() => setShowForm(false)}
                         />
                     </Card>
                 )}
 
-                {/* ── Errors ── */}
                 {error && (
                     <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                         {error}
                     </div>
                 )}
 
-                {loading && <p className="text-slate-500">Loading programs...</p>}
+                {loading && <Card><TableSkeleton /></Card>}
 
                 {!loading && banks.length === 0 && (
-                    <p className="text-slate-500">Add a bank first, then create programs.</p>
+                    <p className="text-slate-500">{t("programs.noBanksFirst")}</p>
                 )}
 
-                {/* ── Bank Filter ── */}
                 {!loading && banks.length > 0 && (
                     <div className="mb-4 flex flex-wrap items-center gap-2">
                         <button
@@ -528,7 +550,7 @@ export default function ProgramsPage() {
                                     : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                                 }`}
                         >
-                            All ({data.length})
+                            {t("rules.all")} ({data.length})
                         </button>
                         {banks.map((bank) => {
                             const count = data.filter((p) => p.bank_id === bank.id).length;
@@ -549,33 +571,31 @@ export default function ProgramsPage() {
                     </div>
                 )}
 
-                {/* ── Table ── */}
                 <DataTable<Program>
                     data={filteredData}
                     columns={[
-                        { key: "id", label: "ID" },
-                        { key: "name", label: "Name" },
-                        { key: "bank_id", label: "Bank" },
-                        { key: "financing_type", label: "Type" },
-                        { key: "calculation_method", label: "Method" },
-                        { key: "interest_rate", label: "Rate" },
-                        { key: "min_months", label: "Min M" },
-                        { key: "max_months", label: "Max M" },
-                        { key: "admin_fees_percent", label: "Fees %" },
-                        { key: "active", label: "Active" },
+                        { key: "id", label: t("common.id") },
+                        { key: "name", label: t("common.name") },
+                        { key: "bank_id", label: t("programs.bank") },
+                        { key: "financing_type", label: t("programs.financingType") },
+                        { key: "calculation_method", label: t("programs.calculationMethod") },
+                        { key: "interest_rate", label: t("programs.interestRateLabel") },
+                        { key: "min_months", label: t("programs.minMonths") },
+                        { key: "max_months", label: t("programs.maxMonths") },
+                        { key: "admin_fees_percent", label: t("programs.adminFees") },
+                        { key: "active", label: t("common.active") },
                     ]}
-                    onEdit={(p) => setEditProgram(p)}
-                    onDelete={remove}
+                    onEdit={isWriteRole ? (p) => setEditProgram(p) : undefined}
+                    onDelete={isWriteRole ? remove : undefined}
                 />
             </div>
 
-            {/* ── Edit Modal ── */}
             {editProgram && (
                 <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
                     <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
-                        <h2 className="mb-1 text-xl font-bold text-slate-900">Edit Program</h2>
+                        <h2 className="mb-1 text-xl font-bold text-slate-900">{t("programs.editProgram")}</h2>
                         <p className="mb-6 text-sm text-slate-500">
-                            {editProgram.name} — {bankName(editProgram.bank_id)}
+                            {t("programs.editProgramDesc", { name: editProgram.name, bank: bankName(editProgram.bank_id) })}
                         </p>
                         <ProgramForm
                             banks={banks}
@@ -585,7 +605,7 @@ export default function ProgramsPage() {
                             }}
                             saving={saving}
                             error={editError}
-                            submitLabel="Save Changes"
+                            submitLabel={t("common.saveChanges")}
                             onSubmit={handleUpdate}
                             onCancel={() => setEditProgram(null)}
                         />

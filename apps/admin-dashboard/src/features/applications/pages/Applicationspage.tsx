@@ -6,13 +6,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
+import { useAuthStore } from "@/store/auth.store";
 import Layout from "@/components/layout/Layout";
 import PageHeader from "@/components/navigation/PageHeader";
 import Card from "@/components/ui/card/Card";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import { applicationsApi } from "@/features/applications/api/Applications";
 import { customersApi } from "@/features/Customers/api/customers.api";
-import { vehiclesApi } from "@/features/Vehicles/api/vehicels.api";
+import { vehiclesApi } from "@/features/Vehicles/api/vehicles.api";
 import { queryKeys } from "@/lib/Querykeys";
 import { routePaths } from "@/router/route-paths";
 import type { Application, ApplicationStatus, Customer, Vehicle, CreateApplicationPayload } from "@/types";
@@ -33,23 +36,24 @@ type ApplicationFormValues = z.infer<typeof applicationSchema>;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<ApplicationStatus, { badge: string; label: string }> = {
-    PENDING: { badge: "border-amber-200 bg-amber-50 text-amber-700", label: "Pending" },
-    APPROVED: { badge: "border-green-200 bg-green-50 text-green-700", label: "Approved" },
-    REJECTED: { badge: "border-red-200 bg-red-50 text-red-700", label: "Rejected" },
-    CANCELLED: { badge: "border-slate-200 bg-slate-50 text-slate-500", label: "Cancelled" },
+    PENDING: { badge: "border-amber-200 bg-amber-50 text-amber-700", label: "applications.pending" },
+    APPROVED: { badge: "border-green-200 bg-green-50 text-green-700", label: "applications.approved" },
+    REJECTED: { badge: "border-red-200 bg-red-50 text-red-700", label: "applications.rejected" },
+    CANCELLED: { badge: "border-slate-200 bg-slate-50 text-slate-500", label: "applications.cancelled" },
 };
 
 const PAYMENT_METHOD_LABELS: Record<Application["payment_method"], string> = {
-    salary_transfer: "Salary Transfer",
-    bank_account: "Bank Account",
-    cash_proof: "Cash Proof",
+    salary_transfer: "applications.salaryTransfer",
+    bank_account: "applications.bankAccount",
+    cash_proof: "applications.cashProof",
 };
 
 function StatusBadge({ status }: { status: ApplicationStatus }) {
+    const { t } = useTranslation();
     const s = STATUS_STYLES[status];
     return (
         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.badge}`}>
-            {s.label}
+            {t(s.label)}
         </span>
     );
 }
@@ -84,6 +88,7 @@ function ApplicationForm({
     onSubmit,
     onCancel,
 }: ApplicationFormProps) {
+    const { t } = useTranslation();
     const {
         register,
         handleSubmit,
@@ -111,9 +116,9 @@ function ApplicationForm({
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-slate-700">Customer *</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.customer")} *</label>
                     <select {...register("customer_id")} className={SELECT_CLS}>
-                        <option value="">Select customer</option>
+                        <option value="">{t("applications.selectCustomer")}</option>
                         {customers.map((c) => (
                             <option key={c.id} value={c.id}>
                                 {c.name} — {c.national_id}
@@ -124,9 +129,9 @@ function ApplicationForm({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-slate-700">Vehicle *</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.vehicle")} *</label>
                     <select {...register("vehicle_id")} className={SELECT_CLS}>
-                        <option value="">Select vehicle</option>
+                        <option value="">{t("applications.selectVehicle")}</option>
                         {vehicles.map((v) => (
                             <option key={v.id} value={v.id}>
                                 {v.brand} {v.model} {v.manufacturing_year} · {v.price.toLocaleString("en-EG")} EGP
@@ -137,7 +142,7 @@ function ApplicationForm({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-slate-700">Down Payment (EGP) *</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.downPayment")} *</label>
                     <input
                         type="number"
                         min={0}
@@ -147,39 +152,36 @@ function ApplicationForm({
                     />
                     {loanAmount !== null && (
                         <p className="mt-1 text-xs text-slate-500">
-                            {downPercent}% down — Finance amount:{" "}
-                            <span className="font-semibold text-blue-600">
-                                {loanAmount.toLocaleString("en-EG")} EGP
-                            </span>
+                            {t("applications.financeCalculation", { percent: downPercent, amount: loanAmount.toLocaleString("en-EG") })}
                         </p>
                     )}
                     <FieldError message={errors.requested_down_payment?.message} />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-slate-700">Duration (months) *</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.duration")} *</label>
                     <select {...register("requested_months")} className={SELECT_CLS}>
                         {[12, 24, 36, 48, 60, 72, 84].map((m) => (
-                            <option key={m} value={m}>{m} months</option>
+                            <option key={m} value={m}>{t("applications.months", { months: m })}</option>
                         ))}
                     </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-slate-700">Payment Method</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.paymentMethod")}</label>
                     <select {...register("payment_method")} className={SELECT_CLS}>
-                        <option value="bank_account">Bank Account</option>
-                        <option value="salary_transfer">Salary Transfer</option>
-                        <option value="cash_proof">Cash Proof</option>
+                        <option value="bank_account">{t("applications.bankAccount")}</option>
+                        <option value="salary_transfer">{t("applications.salaryTransfer")}</option>
+                        <option value="cash_proof">{t("applications.cashProof")}</option>
                     </select>
                 </div>
 
                 <div className="flex flex-col gap-1 sm:col-span-2">
-                    <label className="text-sm font-semibold text-slate-700">Notes</label>
+                    <label className="text-sm font-semibold text-slate-700">{t("applications.notes")}</label>
                     <textarea
                         {...register("notes")}
                         rows={2}
-                        placeholder="Additional details..."
+                        placeholder={t("applications.additionalDetails")}
                         className={INPUT_CLS + " resize-none"}
                     />
                 </div>
@@ -197,14 +199,14 @@ function ApplicationForm({
                     onClick={onCancel}
                     className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
-                    Cancel
+                    {t("applications.cancel")}
                 </button>
                 <button
                     type="submit"
                     disabled={saving}
                     className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
-                    {saving ? "Creating..." : "Create Application"}
+                    {saving ? t("common.saving") : t("applications.createApplication")}
                 </button>
             </div>
         </form>
@@ -224,6 +226,7 @@ function ApplicationCard({
     onEvaluate: (id: number) => void;
     updatingId: number | null;
 }) {
+    const { t } = useTranslation();
     const isUpdating = updatingId === app.id;
 
     return (
@@ -238,30 +241,30 @@ function ApplicationCard({
                         {app.brand} {app.model} · {app.manufacturing_year} · {app.condition}
                     </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                     <p className="font-semibold text-slate-900">
                         {Number(app.price).toLocaleString("en-EG")} EGP
                     </p>
-                    <p className="text-xs text-slate-400">Vehicle price</p>
+                    <p className="text-xs text-slate-400">{t("applications.vehiclePrice")}</p>
                 </div>
             </div>
 
             <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 sm:grid-cols-4">
                 <div>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wide">Salary</span>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wide">{t("applications.salary")}</span>
                     <p>{Number(app.salary).toLocaleString("en-EG")} EGP</p>
                 </div>
                 <div>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wide">Down</span>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wide">{t("applications.down")}</span>
                     <p>{Number(app.requested_down_payment).toLocaleString("en-EG")} EGP</p>
                 </div>
                 <div>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wide">Duration</span>
-                    <p>{app.requested_months} months</p>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wide">{t("applications.durationLabel")}</span>
+                    <p>{t("applications.months", { months: app.requested_months })}</p>
                 </div>
                 <div>
-                    <span className="font-semibold text-slate-400 uppercase tracking-wide">Payment</span>
-                    <p>{PAYMENT_METHOD_LABELS[app.payment_method]}</p>
+                    <span className="font-semibold text-slate-400 uppercase tracking-wide">{t("applications.payment")}</span>
+                    <p>{t(PAYMENT_METHOD_LABELS[app.payment_method])}</p>
                 </div>
             </div>
 
@@ -274,7 +277,7 @@ function ApplicationCard({
                             onClick={() => onStatusChange(app.id, "APPROVED")}
                             className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100 disabled:opacity-50"
                         >
-                            Approve
+                            {t("applications.approve")}
                         </button>
                         <button
                             type="button"
@@ -282,7 +285,7 @@ function ApplicationCard({
                             onClick={() => onStatusChange(app.id, "REJECTED")}
                             className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
-                            Reject
+                            {t("applications.reject")}
                         </button>
                         <button
                             type="button"
@@ -290,22 +293,22 @@ function ApplicationCard({
                             onClick={() => onStatusChange(app.id, "CANCELLED")}
                             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                         >
-                            Cancel
+                            {t("applications.cancel")}
                         </button>
                     </>
                 )}
                 <button
                     type="button"
                     onClick={() => onEvaluate(app.id)}
-                    className="ml-auto rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+                    className="ms-auto rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
                 >
-                    Run Evaluation →
+                    {t("applications.runEvaluation")}
                 </button>
             </div>
 
             {app.notes && (
                 <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span className="font-semibold">Note:</span> {app.notes}
+                    <span className="font-semibold">{t("applications.note")}</span> {app.notes}
                 </p>
             )}
         </div>
@@ -315,8 +318,11 @@ function ApplicationCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ApplicationsPage() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const role = useAuthStore((s) => s.tenant?.role);
+    const isWriteRole = role === "ADMIN" || role === "MANAGER";
     const [showForm, setShowForm] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | "all">("all");
@@ -346,7 +352,7 @@ export default function ApplicationsPage() {
             setShowForm(false);
             setFormError(null);
             void invalidate();
-            toast.success("Application created successfully.");
+            toast.success(t("toasts.created"));
         },
         onError: (err: Error) => setFormError(err.message),
     });
@@ -358,7 +364,7 @@ export default function ApplicationsPage() {
         onSuccess: (_data, { status }) => {
             setUpdatingId(null);
             void invalidate();
-            toast.success(`Application ${status.toLowerCase()}.`);
+            toast.success(t("toasts.updated"));
         },
         onError: () => {
             setUpdatingId(null);
@@ -399,15 +405,8 @@ export default function ApplicationsPage() {
             <PageHeader
                 title="Applications"
                 description="Manage financing applications from customers."
-                action={
-                    <button
-                        type="button"
-                        onClick={() => setShowForm((v) => !v)}
-                        className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                        {showForm ? "Cancel" : "+ New Application"}
-                    </button>
-                }
+                action={isWriteRole ? () => setShowForm((v) => !v) : undefined}
+                actionLabel={showForm ? "Cancel" : "+ New Application"}
             />
 
             {/* Status filter tabs */}
@@ -468,7 +467,7 @@ export default function ApplicationsPage() {
             )}
 
             {isLoading ? (
-                <Card><p className="text-sm text-slate-500">Loading applications...</p></Card>
+                <Card><CardSkeleton lines={4} /></Card>
             ) : filtered.length === 0 ? (
                 <Card>
                     <p className="py-8 text-center text-sm text-slate-500">

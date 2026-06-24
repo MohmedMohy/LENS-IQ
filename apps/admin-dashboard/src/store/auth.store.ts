@@ -1,42 +1,32 @@
 import { create } from "zustand";
-import type { Tenant } from "@/types/auth"; // استورد الـ Tenant type عشان نستخدمه في الـ state
+import type { Tenant } from "@/types/auth";
 
 type AuthState = {
-    accessToken: string | null;
-    tenant: Tenant | null; //  object مش string
+    tenant: Tenant | null;
+    token: string | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
 
-    setSession: (token: string, tenant: Tenant) => void; //  بنحتاج الـ tenant عشان نخزّنه في الـ state
+    setSession: (tenant: Tenant, token?: string) => void;
     logout: () => void;
+    setLoading: (loading: boolean) => void;
 };
 
-//  helper — بنقرأ الـ tenant من localStorage ونحوّله من JSON
-function getTenantFromStorage(): Tenant | null {
-    try {
-        const raw = localStorage.getItem("tenant");
-        return raw ? (JSON.parse(raw) as Tenant) : null;
-    } catch {
-        return null;
-    }
-}
-
 export const useAuthStore = create<AuthState>((set) => ({
-    accessToken: localStorage.getItem("access_token"),
-    tenant: getTenantFromStorage(), //  parse بدل raw string
+    tenant: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true,
 
-    setSession: (token, tenant) => {
-        localStorage.setItem("access_token", token);
-        localStorage.setItem("tenant", JSON.stringify(tenant)); // stringify عشان نخزّنه صح
-
-        set({ accessToken: token, tenant });
+    setSession: (tenant, token) => {
+        set({ tenant, token: token ?? null, isAuthenticated: true, isLoading: false });
     },
 
     logout: () => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("tenant");
+        set({ tenant: null, token: null, isAuthenticated: false, isLoading: false });
+    },
 
-        set({ accessToken: null, tenant: null });
+    setLoading: (loading) => {
+        set({ isLoading: loading });
     },
 }));
-
-export const getAccessToken = (): string | null =>
-    localStorage.getItem("access_token");

@@ -19,6 +19,8 @@ export interface Customer {
   owns_property: boolean;
   owns_car: boolean;
   salary_transfer: boolean;
+  tax_card: string | null;
+  commercial_registry: string | null;
 }
 
 export type CreateCustomerPayload = Omit<Customer, "id">;

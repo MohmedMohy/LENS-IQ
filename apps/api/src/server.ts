@@ -2,10 +2,12 @@ import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import fastifyCookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
+import crypto from "node:crypto";
 
 process.on("unhandledRejection", (reason) => {
   console.error("UNHANDLED REJECTION:", reason);
@@ -13,6 +15,9 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT EXCEPTION:", err);
 });
+
+import { validateEnv } from "./shared/env.js";
+validateEnv();
 
 import { authRoutes } from "./auth/auth.routes.js";
 import { banksRoutes } from "./admin/banks/routes.js";
@@ -23,6 +28,10 @@ import { vehiclesRoutes } from "./admin/vehicles/routes.js";
 import { applicationsRoutes } from "./admin/applications/routes.js";
 import { evaluateRoutes } from "./routes/evaluate.js";
 import { publicApplyRoutes } from "./routes/public.apply.js";
+import { optimizeRoutes } from "./routes/optimize.js";
+import { usersRoutes } from "./admin/users/routes.js";
+import { dashboardRoutes } from "./routes/dashboard.js";
+import { auditRoutes } from "./admin/audit/routes.js";
 import { db } from "./db/db.js";
 import { sendError } from "./shared/response.js";
 
@@ -32,13 +41,9 @@ const __dirname = path.dirname(__filename);
 function findFrontendDist(): string | null {
   if (process.env.FRONTEND_DIST) return process.env.FRONTEND_DIST;
   const candidates = [
-    // Combined Docker: /app/dist -> /app/admin-dashboard/dist
     path.join(__dirname, "..", "admin-dashboard", "dist"),
-    // Combined Docker (new layout): /app/dist -> /app/apps/admin-dashboard/dist
     path.join(__dirname, "..", "..", "apps", "admin-dashboard", "dist"),
-    // Local (apps/api/src -> apps/admin-dashboard/dist)
     path.join(__dirname, "..", "..", "admin-dashboard", "dist"),
-    // Old location (apps/api/dist -> admin-dashboard/dist)
     path.join(__dirname, "..", "..", "..", "admin-dashboard", "dist"),
   ];
   for (const p of candidates) {
@@ -47,7 +52,7 @@ function findFrontendDist(): string | null {
   return null;
 }
 const FRONTEND_DIST = findFrontendDist();
-const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/public", "/health"];
+const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard"];
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -80,10 +85,35 @@ await fastify.register(cors, {
   credentials: true,
 });
 
+await fastify.register(fastifyCookie, {
+  secret: process.env.COOKIE_SECRET || "default-cookie-secret-change-me",
+});
+
+// Global rate limit
 await fastify.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
   allowList: ["127.0.0.1", "::1"],
+});
+
+// Login-specific rate limit via hook
+fastify.addHook("onRoute", (routeOptions) => {
+  if (routeOptions.url === "/auth/login" && routeOptions.method === "POST") {
+    const prev = routeOptions.config || {};
+    routeOptions.config = {
+      ...prev,
+      rateLimit: {
+        max: 5,
+        timeWindow: "15 minutes",
+      },
+    };
+  }
+});
+
+// Request ID middleware
+fastify.addHook("onRequest", async (request, reply) => {
+  const requestId = crypto.randomUUID().slice(0, 8);
+  reply.headers({ "x-request-id": requestId });
 });
 
 fastify.setErrorHandler((error, _request, reply) => {
@@ -100,6 +130,7 @@ fastify.addHook("onSend", async (_request, reply, payload) => {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.railway.app; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   });
   return payload;
 });
@@ -111,7 +142,11 @@ await rulesRoutes(fastify);
 await customersRoutes(fastify);
 await vehiclesRoutes(fastify);
 await applicationsRoutes(fastify);
+await usersRoutes(fastify);
+await dashboardRoutes(fastify);
+await auditRoutes(fastify);
 await evaluateRoutes(fastify);
+await optimizeRoutes(fastify);
 await publicApplyRoutes(fastify);
 
 fastify.get("/health", async () => {

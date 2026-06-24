@@ -9,9 +9,11 @@ import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
 import PageHeader from "@/components/navigation/PageHeader";
 import Card from "@/components/ui/card/Card";
-import { vehiclesApi } from "@/features/Vehicles/api/vehicels.api";
+import { TableSkeleton } from "@/components/ui/skeleton";
+import { vehiclesApi } from "@/features/Vehicles/api/vehicles.api";
 import { queryKeys } from "@/lib/Querykeys";
 import type { Vehicle, CreateVehiclePayload, UpdateVehiclePayload } from "@/types";
+import { useAuthStore } from "@/store/auth.store";
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
@@ -189,6 +191,8 @@ function ConditionBadge({ condition }: { condition: Vehicle["condition"] }) {
 
 export default function VehiclesPage() {
     const queryClient = useQueryClient();
+    const tenant = useAuthStore((s) => s.tenant);
+    const isWriteRole = tenant?.role === "ADMIN" || tenant?.role === "MANAGER";
     const [showForm, setShowForm] = useState(false);
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
@@ -253,15 +257,8 @@ export default function VehiclesPage() {
             <PageHeader
                 title="Vehicles"
                 description="Manage vehicle inventory available for financing."
-                action={
-                    <button
-                        type="button"
-                        onClick={() => setShowForm((v) => !v)}
-                        className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                        {showForm ? "Cancel" : "+ Add Vehicle"}
-                    </button>
-                }
+                action={isWriteRole ? () => setShowForm((v) => !v) : undefined}
+                actionLabel={showForm ? "Cancel" : "+ Add Vehicle"}
             />
 
             {/* Stats */}
@@ -286,7 +283,7 @@ export default function VehiclesPage() {
                 ))}
             </div>
 
-            {showForm && (
+            {isWriteRole && showForm && (
                 <Card className="mb-6">
                     <p className="mb-4 text-sm font-semibold text-slate-700">New Vehicle</p>
                     <VehicleForm
@@ -321,7 +318,7 @@ export default function VehiclesPage() {
             )}
 
             {isLoading ? (
-                <Card><p className="text-sm text-slate-500">Loading vehicles...</p></Card>
+                <Card><TableSkeleton /></Card>
             ) : (
                 <Card>
                     <div className="mb-3">
@@ -340,8 +337,8 @@ export default function VehiclesPage() {
                             { key: "price", label: "Price (EGP)" },
                             { key: "category", label: "Category" },
                         ]}
-                        onEdit={(v) => setEditingVehicle(v)}
-                        onDelete={(v) => deleteMutation.mutate(v)}
+                        onEdit={isWriteRole ? (v) => setEditingVehicle(v) : undefined}
+                        onDelete={isWriteRole ? (v) => deleteMutation.mutate(v) : undefined}
                     />
                 </Card>
             )}

@@ -13,11 +13,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
+      "/auth": { target: "http://localhost:3000", changeOrigin: true },
+      "/admin": { target: "http://localhost:3000", changeOrigin: true },
+      "/me": { target: "http://localhost:3000", changeOrigin: true },
+      "/evaluate": { target: "http://localhost:3000", changeOrigin: true },
+      "/optimize": { target: "http://localhost:3000", changeOrigin: true },
+      "/public": { target: "http://localhost:3000", changeOrigin: true },
+      "/health": { target: "http://localhost:3000", changeOrigin: true },
     },
   },
   preview: {

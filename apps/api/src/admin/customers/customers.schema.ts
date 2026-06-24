@@ -47,6 +47,10 @@ export const createCustomerSchema = z.object({
     owns_car: z.boolean().default(false),
 
     salary_transfer: z.boolean().default(false),
+
+    tax_card: z.string().optional(),
+
+    commercial_registry: z.string().optional(),
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();

@@ -1,8 +1,7 @@
-// src/admin/customers/routes.ts
-
 import type { FastifyInstance } from "fastify";
 
 import { authMiddleware } from "../../auth/auth.middleware.js";
+import { rbacMiddleware } from "../../auth/rbac.middleware.js";
 
 import {
     createCustomerController,
@@ -23,53 +22,37 @@ type IdParams = {
     id: string;
 };
 
+const requireWrite = [authMiddleware, rbacMiddleware("ADMIN", "MANAGER")];
+const requireRead = [authMiddleware, rbacMiddleware("ADMIN", "MANAGER", "SALES_AGENT")];
+
 export async function customersRoutes(fastify: FastifyInstance) {
-    fastify.post<{
-        Body: CreateCustomerDTO;
-    }>(
+    fastify.post<{ Body: CreateCustomerDTO }>(
         "/admin/customers",
-        {
-            preHandler: authMiddleware,
-        },
+        { preHandler: requireWrite },
         createCustomerController
     );
 
     fastify.get(
         "/admin/customers",
-        {
-            preHandler: authMiddleware,
-        },
+        { preHandler: requireRead },
         getCustomersController
     );
 
-    fastify.get<{
-        Params: IdParams;
-    }>(
+    fastify.get<{ Params: IdParams }>(
         "/admin/customers/:id",
-        {
-            preHandler: authMiddleware,
-        },
+        { preHandler: requireRead },
         getCustomerByIdController
     );
 
-    fastify.patch<{
-        Params: IdParams;
-        Body: UpdateCustomerDTO;
-    }>(
+    fastify.patch<{ Params: IdParams; Body: UpdateCustomerDTO }>(
         "/admin/customers/:id",
-        {
-            preHandler: authMiddleware,
-        },
+        { preHandler: requireWrite },
         updateCustomerController
     );
 
-    fastify.delete<{
-        Params: IdParams;
-    }>(
+    fastify.delete<{ Params: IdParams }>(
         "/admin/customers/:id",
-        {
-            preHandler: authMiddleware,
-        },
+        { preHandler: requireWrite },
         deleteCustomerController
     );
 }

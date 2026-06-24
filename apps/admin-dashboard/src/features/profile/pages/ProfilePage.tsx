@@ -11,6 +11,10 @@ export default function ProfilePage() {
   
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
 
     useEffect(() => {
         profileApi.get()
@@ -32,6 +36,31 @@ export default function ProfilePage() {
         navigator.clipboard.writeText(applyLink)
             .then(() => toast.success("تم نسخ رابط التقديم بنجاح!"))
             .catch(() => toast.error("فشل في نسخ الرابط"));
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            toast.error("كلمة المرور الجديدة غير متطابقة مع التأكيد");
+            return;
+        }
+        setIsChangingPassword(true);
+        try {
+            await profileApi.changePassword({
+                current_password: currentPassword,
+                new_password: newPassword,
+            });
+            toast.success("تم تغيير كلمة المرور بنجاح");
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (err: unknown) {
+            const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+            const msg = axiosErr?.response?.data?.error || axiosErr?.message || "فشل في تغيير كلمة المرور";
+            toast.error(msg);
+        } finally {
+            setIsChangingPassword(false);
+        }
     };
 
     return (
@@ -63,7 +92,54 @@ export default function ProfilePage() {
                     </div>
                 </Card>
 
-                {/* يمكنك إبقاء باقي بيانات الملف الشخصي هنا */}
+                <Card>
+                    <h3 className="text-lg font-semibold mb-4 text-slate-800">تغيير كلمة المرور</h3>
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">كلمة المرور الحالية</label>
+                            <input
+                                type="password"
+                                required
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400"
+                                autoComplete="current-password"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">كلمة المرور الجديدة</label>
+                            <input
+                                type="password"
+                                required
+                                minLength={8}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400"
+                                autoComplete="new-password"
+                            />
+                            <p className="text-xs text-slate-400 mt-1">يجب أن تكون 8 أحرف على الأقل</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">تأكيد كلمة المرور الجديدة</label>
+                            <input
+                                type="password"
+                                required
+                                minLength={8}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400"
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isChangingPassword}
+                            className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {isChangingPassword ? "جاري الحفظ..." : "حفظ كلمة المرور الجديدة"}
+                        </button>
+                    </form>
+                </Card>
             </div>
         </Layout>
     );

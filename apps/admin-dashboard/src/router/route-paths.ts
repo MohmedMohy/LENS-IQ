@@ -11,6 +11,8 @@ export const routePaths = {
     applications: "/applications",
     evaluate: "/evaluate",
     profile: "/profile",
+    users: "/users",
+    audit: "/audit",
 } as const;
 
 export type AppRouteKey = keyof typeof routePaths;

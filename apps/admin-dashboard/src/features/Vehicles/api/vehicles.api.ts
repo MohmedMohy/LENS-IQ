@@ -15,33 +15,23 @@ function normalizeVehicle(raw: Record<string, unknown>): Vehicle {
 
 export const vehiclesApi = {
     getAll: async (): Promise<Vehicle[]> => {
-        const { data } = await apiClient.get<{ success: boolean; data: Vehicle[] }>(
-            "/admin/vehicles"
-        );
-        return data.data.map(normalizeVehicle);
+        const { data } = await apiClient.get<Vehicle[]>("/admin/vehicles");
+        return data.map(normalizeVehicle);
     },
 
     getById: async (id: number): Promise<Vehicle> => {
-        const { data } = await apiClient.get<{ success: boolean; data: Vehicle }>(
-            `/admin/vehicles/${id}`
-        );
-        return normalizeVehicle(data.data as Record<string, unknown>);
+        const { data } = await apiClient.get<Vehicle>(`/admin/vehicles/${id}`);
+        return normalizeVehicle(data as Record<string, unknown>);
     },
 
     create: async (payload: CreateVehiclePayload): Promise<Vehicle> => {
-        const { data } = await apiClient.post<{ success: boolean; data: Vehicle }>(
-            "/admin/vehicles",
-            payload
-        );
-        return normalizeVehicle(data.data as Record<string, unknown>);
+        const { data } = await apiClient.post<Vehicle>("/admin/vehicles", payload);
+        return normalizeVehicle(data as Record<string, unknown>);
     },
 
     update: async (id: number, payload: UpdateVehiclePayload): Promise<Vehicle> => {
-        const { data } = await apiClient.patch<{ success: boolean; data: Vehicle }>(
-            `/admin/vehicles/${id}`,
-            payload
-        );
-        return normalizeVehicle(data.data as Record<string, unknown>);
+        const { data } = await apiClient.patch<Vehicle>(`/admin/vehicles/${id}`, payload);
+        return normalizeVehicle(data as Record<string, unknown>);
     },
 
     remove: async (id: number): Promise<void> => {

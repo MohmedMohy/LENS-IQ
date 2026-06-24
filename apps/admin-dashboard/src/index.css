@@ -1,34 +1,229 @@
 @import "tailwindcss";
 
 :root {
-    font-family:
-        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", sans-serif;
-    color: #0f172a;
-    background: #f8fafc;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  --primary: #4F46E5;
+  --primary-light: #6366F1;
+  --primary-dark: #4338CA;
+  --secondary: #06B6D4;
+  --secondary-light: #22D3EE;
+  --success: #10B981;
+  --success-light: #34D399;
+  --warning: #F59E0B;
+  --warning-light: #FBBF24;
+  --error: #EF4444;
+  --error-light: #F87171;
+  --bg: #0F172A;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --glass-shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.4);
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --sidebar-width: 240px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* {
-    box-sizing: border-box;
+.light {
+  --bg: #F8FAFC;
+  --bg-card: rgba(15, 23, 42, 0.03);
+  --bg-card-hover: rgba(15, 23, 42, 0.06);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-border-hover: rgba(15, 23, 42, 0.14);
+  --glass-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+  --glass-shadow-lg: 0 8px 48px rgba(15, 23, 42, 0.12);
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
 }
 
 body {
-    min-width: 320px;
-    min-height: 100vh;
-    margin: 0;
+  margin: 0;
+  font-family: 'Segoe UI', 'Cairo', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-button,
-input,
-select,
-textarea {
-    font: inherit;
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--primary);
+  color: white;
+}
+
+button, input, select, textarea {
+  font: inherit;
 }
 
 #root {
-    min-height: 100vh;
+  min-height: 100vh;
+}
+
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-hover {
+  transition: all var(--transition-normal);
+}
+.glass-hover:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+  transition: all var(--transition-normal);
+}
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+.glass-input {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+.glass-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.glass-input::placeholder {
+  color: var(--text-muted);
+}
+
+.glass-btn {
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  outline: none;
+}
+.glass-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.glass-btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  box-shadow: 0 2px 16px rgba(79, 70, 229, 0.3);
+}
+.glass-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 24px rgba(79, 70, 229, 0.45);
+  transform: translateY(-1px);
+}
+
+.glass-btn-secondary {
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+.glass-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--glass-border-hover);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-pulse {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.status-approved {
+  --status-color: var(--success);
+  --status-bg: rgba(16, 185, 129, 0.1);
+  --status-border: rgba(16, 185, 129, 0.25);
+  --status-text: var(--success-light);
+}
+
+.status-conditional {
+  --status-color: var(--warning);
+  --status-bg: rgba(245, 158, 11, 0.1);
+  --status-border: rgba(245, 158, 11, 0.25);
+  --status-text: var(--warning-light);
+}
+
+.status-rejected {
+  --status-color: var(--error);
+  --status-bg: rgba(239, 68, 68, 0.1);
+  --status-border: rgba(239, 68, 68, 0.25);
+  --status-text: var(--error-light);
+}
+
+.light .status-approved {
+  --status-bg: rgba(16, 185, 129, 0.08);
+  --status-text: #059669;
+}
+
+.light .status-conditional {
+  --status-bg: rgba(245, 158, 11, 0.08);
+  --status-text: #D97706;
+}
+
+.light .status-rejected {
+  --status-bg: rgba(239, 68, 68, 0.08);
+  --status-text: #DC2626;
 }

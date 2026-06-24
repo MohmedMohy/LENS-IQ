@@ -19,6 +19,7 @@ function normalizeProgram(raw: Record<string, unknown>): Program {
         min_months: Number(raw.min_months ?? 12),
         max_months: Number(raw.max_months),
         min_down_payment_percent: Number(raw.min_down_payment_percent),
+        max_down_payment_percent: Number(raw.max_down_payment_percent ?? 100),
         max_finance_amount: raw.max_finance_amount != null ? Number(raw.max_finance_amount) : null,
         admin_fees_percent: Number(raw.admin_fees_percent ?? 0),
         active: Boolean(raw.active),

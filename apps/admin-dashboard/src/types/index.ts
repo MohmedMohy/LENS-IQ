@@ -48,6 +48,7 @@ export type Program = {
     min_months: number;
     max_months: number;
     min_down_payment_percent: number;
+    max_down_payment_percent: number;
     max_finance_amount: number | null;
     admin_fees_percent: number;
 
@@ -106,6 +107,8 @@ export type Customer = {
     owns_property: boolean;
     owns_car: boolean;
     salary_transfer: boolean;
+    tax_card: string | null;
+    commercial_registry: string | null;
 };
 
 export type CreateCustomerPayload = Omit<Customer, "id">;
@@ -196,6 +199,8 @@ export type Reason = {
 export type Offer = {
     programId: number;
     bankId: number;
+    programName?: string;
+    bankName?: string;
     status: OfferStatus;
     installment: number;
     totalPayment: number;
@@ -207,6 +212,7 @@ export type Offer = {
     riskScore: number;
     riskLevel: RiskLevel;
     affordabilityScore: number;
+    approvalProbability?: number;
     reasons: Reason[];
 };
 
@@ -214,4 +220,29 @@ export type EvaluateResponse = {
     bestOffer: Offer | null;
     offers: Offer[];
     error?: string;
+};
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+
+export type { User, CreateUserPayload, UpdateUserPayload } from "./user";
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+export type AuditLog = {
+    id: number;
+    tenant_id: number;
+    user_id: number | null;
+    user_type: string;
+    action: string;
+    entity: string;
+    entity_id: number | null;
+    details: Record<string, unknown> | null;
+    ip_address: string | null;
+    created_at: string;
+    user_name: string | null;
+    user_email: string | null;
 };

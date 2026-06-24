@@ -1,24 +1,38 @@
 import type { DecisionStatus } from "./types";
 
-//شكل الprops 
-type props ={
-    status: DecisionStatus;
+type Props = {
+  status: DecisionStatus;
+  size?: "sm" | "md" | "lg";
 };
-export default function StatusBadge({status}:props) {
 
-    //تحديد اللون بناءً على الحالة
-        const styles :Record<DecisionStatus, string> = {
-        APPROVED: "bg-green-500/20 text-green-400 border-green-500/40",
-        CONDITIONAL: "bg-amber-500/20 text-yellow-400 border-yellow-500/40",
-        REJECTED: "bg-red-500/20 text-red-400 border-red-500/40",
-    };
+const config: Record<DecisionStatus, { label: string; cls: string }> = {
+  APPROVED: { label: "Approved", cls: "status-approved" },
+  CONDITIONAL: { label: "Conditional", cls: "status-conditional" },
+  REJECTED: { label: "Rejected", cls: "status-rejected" },
+};
 
-    return (
-        < div 
-         className={`px-4 py-2 rounded-full text-sm font-semibold tracking-wide
-            w-fit ${ styles[status]}` }>
-            {status}
+const sizeMap = {
+  sm: "px-3 py-1 text-[10px]",
+  md: "px-4 py-1.5 text-xs",
+  lg: "px-5 py-2 text-sm",
+};
 
-            </div>   
-    );
+export default function StatusBadge({ status, size = "md" }: Props) {
+  const c = config[status];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full font-semibold tracking-wide ${c.cls} ${sizeMap[size]}`}
+      style={{
+        background: "var(--status-bg)",
+        color: "var(--status-text)",
+        border: "1px solid var(--status-border)",
+      }}
+    >
+      <span
+        className="mr-1.5 h-1.5 w-1.5 rounded-full"
+        style={{ background: "var(--status-color)" }}
+      />
+      {c.label}
+    </span>
+  );
 }

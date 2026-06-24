@@ -22,6 +22,7 @@ export const createProgramSchema = z.object({
     min_months: z.number().int().positive().default(12),
     max_months: z.number().int().positive(),
     min_down_payment_percent: z.number().min(0).max(100),
+    max_down_payment_percent: z.number().min(0).max(100).default(100),
     max_finance_amount: z.number().positive().optional().nullable(),
     admin_fees_percent: z.number().min(0).max(100).default(0),
 

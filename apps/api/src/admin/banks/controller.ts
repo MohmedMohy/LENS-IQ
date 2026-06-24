@@ -1,10 +1,9 @@
-// src/admin/banks/controller.ts
-
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { createBank, getBanks, updateBank, deleteBank } from "./service.js";
 import { createBankSchema, updateBankSchema } from "./banks.schema.js";
+import { sendSuccess, sendError } from "../../shared/response.js";
+import { logAudit } from "../../shared/audit.service.js";
 
-/* CREATE */
 export async function createBankController(
     req: FastifyRequest,
     reply: FastifyReply
@@ -12,26 +11,28 @@ export async function createBankController(
     try {
         const tenantId = req.tenantId;
         const body = createBankSchema.parse(req.body);
-
         const result = await createBank(body, tenantId);
-
-        return reply.status(201).send(result);
-    } catch (err) {
-        return reply.status(400).send({ error: "Validation failed", details: err });
+        logAudit({ tenantId, userId: req.userId, action: "create", entity: "bank", entityId: result.id });
+        return sendSuccess(reply, result, 201);
+    } catch (err: any) {
+        if (err?.issues) return sendError(reply, "Validation failed", 400, err.issues);
+        return sendError(reply, err.message || "Validation failed", 400);
     }
 }
 
-/* GET */
 export async function getBanksController(
     req: FastifyRequest,
     reply: FastifyReply
 ) {
-    const tenantId = req.tenantId;
-    const data = await getBanks(tenantId);
-    return reply.send(data);
+    try {
+        const tenantId = req.tenantId;
+        const data = await getBanks(tenantId);
+        return sendSuccess(reply, data);
+    } catch (err: any) {
+        return sendError(reply, err.message || "Failed to fetch banks", 500);
+    }
 }
 
-/* UPDATE */
 export async function updateBankController(
     req: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
@@ -40,16 +41,16 @@ export async function updateBankController(
         const tenantId = req.tenantId;
         const id = Number(req.params.id);
         const body = updateBankSchema.parse(req.body);
-
         const result = await updateBank(id, body, tenantId);
-
-        return reply.send(result);
-    } catch (err) {
-        return reply.status(400).send({ error: "Update failed", details: err });
+        logAudit({ tenantId, userId: req.userId, action: "update", entity: "bank", entityId: id });
+        return sendSuccess(reply, result);
+    } catch (err: any) {
+        if (err?.issues) return sendError(reply, "Update failed", 400, err.issues);
+        if (err.message === "Bank not found") return sendError(reply, err.message, 404);
+        return sendError(reply, err.message || "Update failed", 400);
     }
 }
 
-/* DELETE */
 export async function deleteBankController(
     req: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
@@ -57,11 +58,11 @@ export async function deleteBankController(
     try {
         const tenantId = req.tenantId;
         const id = Number(req.params.id);
-
         const result = await deleteBank(id, tenantId);
-
-        return reply.send(result);
-    } catch (err) {
-        return reply.status(400).send({ error: "Delete failed", details: err });
+        logAudit({ tenantId, userId: req.userId, action: "delete", entity: "bank", entityId: id });
+        return sendSuccess(reply, result);
+    } catch (err: any) {
+        if (err.message === "Bank not found") return sendError(reply, err.message, 404);
+        return sendError(reply, err.message || "Delete failed", 400);
     }
 }

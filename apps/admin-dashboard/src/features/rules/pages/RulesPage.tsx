@@ -1,13 +1,15 @@
-// src/pages/rules/RulesPage.tsx
-
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
+import Card from "@/components/ui/card/Card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { banksApi } from "@/features/banks/api/banks.api";
 import { programsApi } from "@/features/programs/api/programs.api";
 import { rulesApi } from "@/features/rules/api/rules.api";
 import type { Bank, Program, Rule, RuleAction, RuleField, RuleOperator } from "@/types";
+import { useAuthStore } from "@/store/auth.store";
 
 const ruleFields: RuleField[] = [
     "salary", "age", "car_age", "price",
@@ -27,7 +29,16 @@ const fieldPlaceholders: Record<RuleField, string> = {
     down_payment: "e.g. 50000",
 };
 
+const actionLabels: Record<RuleAction, string> = {
+    REJECT: "rules.reject",
+    REQUIRED: "rules.required",
+    WARN: "rules.warn",
+};
+
 export default function RulesPage() {
+    const { t } = useTranslation();
+    const tenant = useAuthStore((s) => s.tenant);
+    const isWriteRole = tenant?.role === "ADMIN" || tenant?.role === "MANAGER";
     const [data, setData] = useState<Rule[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [banks, setBanks] = useState<Bank[]>([]);
@@ -65,7 +76,7 @@ export default function RulesPage() {
                 setBanks(bankList);
                 setProgramId((current) => current || String(programList[0]?.id ?? ""));
             } catch (err) {
-                if (mounted) setError(err instanceof Error ? err.message : "Unable to load rules.");
+                if (mounted) setError(err instanceof Error ? err.message : t("rules.loadError"));
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -98,7 +109,7 @@ export default function RulesPage() {
         event.preventDefault();
         const selectedProgramId = Number(programId);
         if (!selectedProgramId || !value.trim()) {
-            setError("Program and value are required.");
+            setError(t("rules.programValueRequired"));
             return;
         }
         setSaving(true);
@@ -117,7 +128,7 @@ export default function RulesPage() {
             setAction("WARN");
             reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not add rule.");
+            setError(err instanceof Error ? err.message : t("rules.createError"));
         } finally {
             setSaving(false);
         }
@@ -129,7 +140,7 @@ export default function RulesPage() {
             await rulesApi.remove(rule.id);
             reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Could not delete rule.");
+            setError(err instanceof Error ? err.message : t("rules.deleteError"));
         }
     };
 
@@ -139,45 +150,43 @@ export default function RulesPage() {
                 <div className="mb-6 flex items-start justify-between">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                            Decision engine
+                            {t("rules.description")}
                         </p>
-                        <h1 className="mt-1 text-2xl font-bold text-slate-900">Rules</h1>
+                        <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("rules.title")}</h1>
                     </div>
                     <button
                         type="button"
                         onClick={reload}
                         className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                        Refresh
+                        {t("rules.refresh")}
                     </button>
                 </div>
 
-                {/* Counts */}
                 <div className="mb-6 flex gap-3">
                     {(["REJECT", "REQUIRED", "WARN"] as RuleAction[]).map((a) => (
                         <div
                             key={a}
                             className="rounded-md border border-slate-200 bg-white px-4 py-2 text-center"
                         >
-                            <p className="text-xs font-semibold uppercase text-slate-500">{a}</p>
+                            <p className="text-xs font-semibold uppercase text-slate-500">{t(actionLabels[a])}</p>
                             <p className="text-xl font-bold text-slate-900">{actionCounts[a]}</p>
                         </div>
                     ))}
                 </div>
 
-                {/* Create form */}
                 <form
                     onSubmit={createRule}
                     className="mb-6 flex flex-wrap items-end gap-3"
                 >
                     <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-                        Program
+                        {t("programs.program")}
                         <select
                             value={programId}
                             onChange={(e) => setProgramId(e.target.value)}
                             className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
                         >
-                            <option value="">Select program</option>
+                            <option value="">{t("rules.selectProgram")}</option>
                             {programs.map((p) => (
                                 <option key={p.id} value={String(p.id)}>
                                     {p.name}
@@ -187,7 +196,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-                        Field
+                        {t("rules.field")}
                         <select
                             value={field}
                             onChange={(e) => {
@@ -205,7 +214,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-                        Operator
+                        {t("rules.operator")}
                         <select
                             value={operator}
                             onChange={(e) => setOperator(e.target.value as RuleOperator)}
@@ -220,7 +229,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-                        Value
+                        {t("rules.value")}
                         <input
                             type="text"
                             value={value}
@@ -231,7 +240,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-                        Action
+                        {t("rules.action")}
                         <select
                             value={action}
                             onChange={(e) => setAction(e.target.value as RuleAction)}
@@ -239,7 +248,7 @@ export default function RulesPage() {
                         >
                             {actions.map((a) => (
                                 <option key={a} value={a}>
-                                    {a}
+                                    {t(actionLabels[a])}
                                 </option>
                             ))}
                         </select>
@@ -250,7 +259,7 @@ export default function RulesPage() {
                         disabled={saving || programs.length === 0}
                         className="rounded-md bg-slate-950 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
                     >
-                        {saving ? "Saving..." : "Add rule"}
+                        {saving ? t("common.saving") : t("rules.addRule")}
                     </button>
                 </form>
 
@@ -259,13 +268,12 @@ export default function RulesPage() {
                         {error}
                     </p>
                 )}
-                {loading && <p className="text-slate-500">Loading rules...</p>}
+                {loading && <Card><TableSkeleton /></Card>}
 
-                {/* Bank filter */}
                 {!loading && banks.length > 0 && (
                     <div className="mb-4 flex items-center gap-3">
                         <span className="text-sm font-semibold text-slate-600">
-                            Filter by bank:
+                            {t("rules.filterByBank")}
                         </span>
                         <div className="flex flex-wrap gap-2">
                             <button
@@ -276,7 +284,7 @@ export default function RulesPage() {
                                         : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
-                                All ({data.length})
+                                {t("rules.all")} ({data.length})
                             </button>
                             {banks.map((bank) => {
                                 const bankProgIds = new Set(
@@ -308,14 +316,14 @@ export default function RulesPage() {
                 <DataTable<Rule>
                     data={filteredData}
                     columns={[
-                        { key: "id", label: "ID" },
-                        { key: "program_id", label: "Program" },
-                        { key: "field", label: "Field" },
-                        { key: "operator", label: "Operator" },
-                        { key: "value", label: "Value" },
-                        { key: "action", label: "Action" },
+                        { key: "id", label: t("common.id") },
+                        { key: "program_id", label: t("programs.program") },
+                        { key: "field", label: t("rules.field") },
+                        { key: "operator", label: t("rules.operator") },
+                        { key: "value", label: t("rules.value") },
+                        { key: "action", label: t("rules.action") },
                     ]}
-                    onDelete={removeRule}
+                    onDelete={isWriteRole ? removeRule : undefined}
                 />
             </div>
         </Layout>

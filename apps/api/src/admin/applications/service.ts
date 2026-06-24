@@ -1,6 +1,7 @@
 // src/admin/applications/service.ts
 
 import { db } from "../../db/db.js";
+import { decrypt } from "../../shared/crypto.service.js";
 
 export async function createApplication(data: {
     customer_id: number;
@@ -40,6 +41,24 @@ export async function getApplications(tenantId: number) {
         [tenantId]
     );
     return result.rows;
+}
+
+export async function getApplicationById(id: number, tenantId: number) {
+    const result = await db.query(
+        `SELECT a.*, 
+            c.name AS customer_name, c.salary, c.job_type, c.national_id, c.phone,
+            v.brand, v.model, v.price, v.manufacturing_year, v.condition
+     FROM applications a
+     JOIN customers c ON a.customer_id = c.id
+     JOIN vehicles  v ON a.vehicle_id  = v.id
+     WHERE a.id = $1 AND a.tenant_id = $2`,
+        [id, tenantId]
+    );
+    if (!result.rows[0]) throw new Error("Application not found");
+    const row = result.rows[0];
+    try { if (row.national_id) row.national_id = decrypt(row.national_id); } catch { /* leave plaintext */ }
+    try { if (row.phone) row.phone = decrypt(row.phone); } catch { /* leave plaintext */ }
+    return row;
 }
 
 export async function updateApplicationStatus(

@@ -17,7 +17,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY apps/api/ ./apps/api/
 COPY apps/admin-dashboard/ ./apps/admin-dashboard/
 COPY packages/ ./packages/
-RUN npx prisma generate --schema=packages/db/prisma/schema.prisma && npx tsc -p apps/api/tsconfig.json && cd apps/admin-dashboard && npx vite build
+RUN npx prisma generate --schema=packages/db/prisma/schema.prisma && \
+    cd apps/api && npx tsc -p tsconfig.json && cd /app && \
+    cd apps/admin-dashboard && npx vite build && cd /app
 
 FROM base AS runner
 ENV NODE_ENV=production
@@ -33,4 +35,4 @@ COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
 COPY --from=builder /app/packages/db/src/seed.ts ./packages/db/src/seed.ts
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 CMD curl -f http://localhost:${PORT}/health || exit 1
-CMD ["sh", "-c", "npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma 2>/dev/null || npx prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss; node dist/server.js"]

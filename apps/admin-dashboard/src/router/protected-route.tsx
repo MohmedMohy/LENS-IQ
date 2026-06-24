@@ -2,11 +2,10 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { routePaths } from "@/router/route-paths";
 import { useAuthStore } from "@/store/auth.store";
 
-// ⚠ مفيش navigate prop هنا خالص — الـ Outlet مش بياخد props
 export default function ProtectedLayout() {
     const location = useLocation();
-    const accessToken = useAuthStore((state) => state.accessToken);
-    if (!accessToken) {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    if (!isAuthenticated) {
         return (
             <Navigate
                 to={routePaths.login}

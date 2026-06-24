@@ -1,9 +1,10 @@
-// src/routes/public.apply.ts
+import crypto from "crypto";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/db.js";
 import { createCustomer } from "../admin/customers/service.js";
 import { createApplication } from "../admin/applications/service.js";
 import { createCustomerSchema } from "../admin/customers/customers.schema.js";
+import { sendSuccess, sendError } from "../shared/response.js";
 import { z } from "zod";
 
 const applySchema = z.object({
@@ -17,31 +18,49 @@ const applySchema = z.object({
 });
 
 export async function publicApplyRoutes(fastify: FastifyInstance) {
+    // GET /public/vehicles/:code — قائمة العربيات المتاحة للمعرض
+    fastify.get("/public/vehicles/:code", async (req, reply) => {
+        try {
+            const { code } = req.params as { code: string };
+            const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+            const tenantResult = await db.query(
+                `SELECT id FROM tenants WHERE api_key_hash = $1 AND active = true`,
+                [codeHash]
+            );
+            const tenant = tenantResult.rows[0];
+            if (!tenant) {
+                return sendError(reply, "رابط التقديم غير صالح أو المعرض غير مفعل.", 404);
+            }
+            const vehicles = await db.query(
+                `SELECT id, brand, model, manufacturing_year, condition, price, category
+           FROM vehicles WHERE tenant_id = $1 ORDER BY id DESC`,
+                [tenant.id]
+            );
+            return sendSuccess(reply, { vehicles: vehicles.rows });
+        } catch (err: any) {
+            return sendError(reply, err.message || "حدث خطأ داخلي", 500);
+        }
+    });
+
+    // POST /public/apply — تقديم طلب تمويل
     fastify.post("/public/apply", async (req, reply) => {
         try {
-            // 1. التحقق من صحة البيانات المدخلة
             const body = applySchema.parse(req.body);
 
-            // 2. البحث عن المعرض باستخدام الـ dealer_code (api_key)
+            const dealerHash = crypto.createHash("sha256").update(body.dealer_code).digest("hex");
             const tenantResult = await db.query(
-                `SELECT id FROM tenants WHERE api_key = $1 AND active = true`,
-                [body.dealer_code]
+                `SELECT id FROM tenants WHERE api_key_hash = $1 AND active = true`,
+                [dealerHash]
             );
 
             const tenant = tenantResult.rows[0];
             if (!tenant) {
-                return reply.status(404).send({
-                    success: false,
-                    message: "رابط التقديم غير صالح أو المعرض غير مفعل.",
-                });
+                return sendError(reply, "رابط التقديم غير صالح أو المعرض غير مفعل.", 404);
             }
 
             const tenantId = tenant.id;
-
-            // 3. إنشاء العميل الجديد وربطه بـ tenantId
             const newCustomer = await createCustomer(body.customer, tenantId);
 
-            // 4. إنشاء الطلب (Application) وربطه بالعميل والـ tenantId
             const newApplication = await createApplication(
                 {
                     customer_id: newCustomer.id,
@@ -54,7 +73,6 @@ export async function publicApplyRoutes(fastify: FastifyInstance) {
                 tenantId
             );
 
-            // 5. إرسال استجابة النجاح
             return reply.status(201).send({
                 success: true,
                 application_id: newApplication.id,
@@ -62,21 +80,11 @@ export async function publicApplyRoutes(fastify: FastifyInstance) {
             });
 
         } catch (err: any) {
-            // معالجة أخطاء Zod (التحقق من البيانات)
             if (err instanceof z.ZodError) {
-                return reply.status(400).send({
-                    success: false,
-                    message: "بيانات غير صالحة",
-                    errors: err.issues,
-                });
+                return sendError(reply, "بيانات غير صالحة", 400, err.issues);
             }
-
-            // معالجة الأخطاء العامة
             fastify.log.error(err);
-            return reply.status(500).send({
-                success: false,
-                message: err.message || "حدث خطأ داخلي أثناء معالجة الطلب",
-            });
+            return sendError(reply, err.message || "حدث خطأ داخلي أثناء معالجة الطلب", 500);
         }
     });
 }

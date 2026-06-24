@@ -11,6 +11,8 @@ export interface Reason {
 export interface Offer {
   programId: number;
   bankId: number;
+  programName?: string;
+  bankName?: string;
   status: OfferStatus;
   installment: number;
   totalPayment: number;
@@ -22,5 +24,16 @@ export interface Offer {
   riskScore: number;
   riskLevel: RiskLevel;
   affordabilityScore: number;
+  approvalProbability: number;
   reasons: Reason[];
+}
+
+export interface OptimizationSuggestion {
+  type: "DOWN_PAYMENT" | "DURATION" | "PROGRAM";
+  label: string;
+  currentValue?: string;
+  suggestedValue: string;
+  currentApproval?: number;
+  projectedApproval: number;
+  impact: "HIGH" | "MEDIUM" | "LOW";
 }

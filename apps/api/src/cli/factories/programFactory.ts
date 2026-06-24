@@ -10,6 +10,7 @@ export function createTestProgram(overrides?: Partial<Program>): Program {
         calculationMethod: "reducing",
         interestRate: 14.5,
         minDownPaymentPercent: 10,
+        maxDownPaymentPercent: 100,
         maxMonths: 60,
         minMonths: 12,
         minSalary: 5000,

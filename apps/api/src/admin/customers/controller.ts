@@ -1,5 +1,3 @@
-// src/admin/customers/controller.ts
-
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import {
@@ -15,9 +13,10 @@ import type {
     UpdateCustomerDTO,
 } from "./customers.schema.js";
 
-type IdParams = {
-    id: string;
-};
+import { sendSuccess, sendError } from "../../shared/response.js";
+import { logAudit } from "../../shared/audit.service.js";
+
+type IdParams = { id: string };
 
 export async function createCustomerController(
     request: FastifyRequest<{ Body: CreateCustomerDTO }>,
@@ -26,9 +25,10 @@ export async function createCustomerController(
     try {
         const tenantId = request.tenantId;
         const customer = await createCustomer(request.body, tenantId);
-        return reply.code(201).send({ success: true, data: customer });
+        await logAudit({ tenantId, userId: request.userId, action: "create", entity: "customer", entityId: customer.id });
+        return sendSuccess(reply, customer, 201);
     } catch (err: any) {
-        return reply.code(500).send({ success: false, message: err.message ?? "Failed to create customer" });
+        return sendError(reply, err.message ?? "Failed to create customer", 500);
     }
 }
 
@@ -39,9 +39,9 @@ export async function getCustomersController(
     try {
         const tenantId = request.tenantId;
         const customers = await getCustomers(tenantId);
-        return reply.send({ success: true, data: customers });
+        return sendSuccess(reply, customers);
     } catch (err: any) {
-        return reply.code(500).send({ success: false, message: err.message ?? "Failed to fetch customers" });
+        return sendError(reply, err.message ?? "Failed to fetch customers", 500);
     }
 }
 
@@ -52,10 +52,10 @@ export async function getCustomerByIdController(
     try {
         const tenantId = request.tenantId;
         const customer = await getCustomerById(Number(request.params.id), tenantId);
-        return reply.send({ success: true, data: customer });
+        return sendSuccess(reply, customer);
     } catch (err: any) {
         const status = err.message === "Customer not found" ? 404 : 500;
-        return reply.code(status).send({ success: false, message: err.message });
+        return sendError(reply, err.message, status);
     }
 }
 
@@ -66,10 +66,11 @@ export async function updateCustomerController(
     try {
         const tenantId = request.tenantId;
         const updated = await updateCustomer(Number(request.params.id), request.body, tenantId);
-        return reply.send({ success: true, data: updated });
+        await logAudit({ tenantId, userId: request.userId, action: "update", entity: "customer", entityId: Number(request.params.id) });
+        return sendSuccess(reply, updated);
     } catch (err: any) {
         const status = err.message === "Customer not found" ? 404 : 500;
-        return reply.code(status).send({ success: false, message: err.message });
+        return sendError(reply, err.message, status);
     }
 }
 
@@ -80,9 +81,10 @@ export async function deleteCustomerController(
     try {
         const tenantId = request.tenantId;
         await deleteCustomer(Number(request.params.id), tenantId);
-        return reply.send({ success: true, message: `Customer ${request.params.id} deleted` });
+        await logAudit({ tenantId, userId: request.userId, action: "delete", entity: "customer", entityId: Number(request.params.id) });
+        return sendSuccess(reply, { id: Number(request.params.id) });
     } catch (err: any) {
         const status = err.message === "Customer not found" ? 404 : 500;
-        return reply.code(status).send({ success: false, message: err.message });
+        return sendError(reply, err.message, status);
     }
 }

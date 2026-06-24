@@ -1,10 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
+function hashApiKey(key: string): string {
+  return crypto.createHash("sha256").update(key).digest("hex");
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash("admin123", 10);
+  const apiKey = crypto.randomBytes(32).toString("hex");
+  const apiKeyHash = hashApiKey(apiKey);
 
   const tenant = await prisma.tenant.upsert({
     where: { email: "admin@lens-iq.com" },
@@ -13,7 +20,8 @@ async function main() {
       name: "Admin Dealer",
       email: "admin@lens-iq.com",
       password_hash: passwordHash,
-      api_key: "test-api-key-123",
+      api_key_hash: apiKeyHash,
+      role: "ADMIN",
       active: true,
     },
   });
@@ -62,6 +70,7 @@ async function main() {
       min_months: 12,
       max_months: 84,
       min_down_payment_percent: 20,
+      max_down_payment_percent: 100,
       max_finance_amount: null,
       admin_fees_percent: 1,
       active: true,
@@ -88,6 +97,7 @@ async function main() {
       min_months: 12,
       max_months: 60,
       min_down_payment_percent: 30,
+      max_down_payment_percent: 100,
       max_finance_amount: 1500000,
       admin_fees_percent: 0.5,
       active: true,
@@ -96,7 +106,8 @@ async function main() {
 
   console.log("Seed completed successfully");
   console.log(`  Tenant: ${tenant.email} / admin123`);
-  console.log(`  API Key: ${tenant.api_key}`);
+  console.log(`  API Key: ${apiKey}`);
+  console.log(`  API Key (masked): ${apiKey.slice(0, 8)}...`);
   console.log(`  Banks: ${bank.name}, ${bank2.name}`);
   console.log(`  Programs: ${program.name}, ${program2.name}`);
 }

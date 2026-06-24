@@ -52,6 +52,11 @@ export function mapProgram(row: any): Program {
                 row.min_down_payment_percent
             ) || 0,
 
+        maxDownPaymentPercent:
+            Number(
+                row.max_down_payment_percent
+            ) || 100,
+
         maxFinanceAmount:
             row.max_finance_amount
                 ? Number(row.max_finance_amount)

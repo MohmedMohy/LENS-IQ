@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/api",
     "apps/admin-dashboard",
+    "apps/widget",
     "packages/*"
   ],
   "scripts": {
@@ -30,10 +31,14 @@
     "snapshot": "tsx ./snapshot.js"
   },
   "devDependencies": {
+    "prettier": "^3.5.0",
     "prisma": "^6.6.0",
     "turbo": "^2.5.0",
-    "prettier": "^3.5.0",
     "typescript": "^5.7.3"
   },
-  "license": "ISC"
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "pdfkit": "^0.19.1"
+  }
 }

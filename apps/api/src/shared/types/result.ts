@@ -52,4 +52,9 @@ export interface EvaluationResult {
    * negative = stricter terms
    */
   maxMonthsModifier?: number;
+
+  /**
+   * Which calculation method the program uses
+   */
+  calculationMethod?: "reducing" | "flat" | "murabaha";
 }

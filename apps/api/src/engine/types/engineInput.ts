@@ -1,3 +1,1 @@
-import type { ApplicationInput } from "../../shared/types/applicationInput.js";
-
-export type EngineInput = ApplicationInput;
+export type { ApplicationInput as EngineInput } from "../../shared/types/applicationInput.js";

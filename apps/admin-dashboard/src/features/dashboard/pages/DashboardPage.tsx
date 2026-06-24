@@ -1,167 +1,206 @@
-// src/pages/dashboard/DashboardPage.tsx
-
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import Layout from "@/components/layout/Layout";
 import PageHeader from "@/components/navigation/PageHeader";
 import Card from "@/components/ui/card/Card";
-import { banksApi } from "@/features/banks/api/banks.api";
-import { programsApi } from "@/features/programs/api/programs.api";
-import { rulesApi } from "@/features/rules/api/rules.api";
-import { queryKeys } from "@/lib/Querykeys";
+import { StatsSkeleton } from "@/components/ui/skeleton";
+import { dashboardApi } from "@/features/dashboard/api/dashboard.api";
 import { useAuthStore } from "@/store/auth.store";
 import { routePaths } from "@/router/route-paths";
-import type { Program } from "@/types";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06 },
+  },
+};
+
+const itemAnim = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0 },
+};
+
+function StatCard({ label, value, sub, color, onClick }: { label: string; value: string | number; sub?: string; color?: string; onClick?: () => void }) {
+  const Wrapper = onClick ? "button" : "div";
+  return (
+    <motion.div variants={itemAnim}>
+      <Wrapper {...(onClick ? { type: "button" as const, onClick } : {})} className={`w-full text-start ${onClick ? "cursor-pointer" : ""}`}>
+        <Card hover className="h-full">
+          <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>{label}</p>
+          <h3 className="mt-2 text-4xl font-bold tracking-tight" style={{ color: color || "var(--text-primary)" }}>{value}</h3>
+          {sub && <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{sub}</p>}
+        </Card>
+      </Wrapper>
+    </motion.div>
+  );
+}
 
 export default function DashboardPage() {
-    const tenant = useAuthStore((state) => state.tenant);
-    const navigate = useNavigate();
+  const { t } = useTranslation();
+  const tenant = useAuthStore((s) => s.tenant);
+  const navigate = useNavigate();
 
-    // ── Queries — share cache with the rest of the app ────────────────────────
-    const { data: banks = [], isLoading: loadingBanks } = useQuery({
-        queryKey: queryKeys.banks,
-        queryFn: banksApi.getAll,
-    });
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: dashboardApi.getStats,
+  });
 
-    const { data: programs = [], isLoading: loadingPrograms } = useQuery({
-        queryKey: queryKeys.programs,
-        queryFn: programsApi.getAll,
-    });
-
-    const { data: rules = [], isLoading: loadingRules } = useQuery({
-        queryKey: queryKeys.rules.all,
-        queryFn: () =>
-            Promise.all(programs.map((p: Program) => rulesApi.getAllByProgram(p.id)))
-                .then((res) => res.flat()),
-        enabled: programs.length > 0,
-    });
-
-    const isLoading = loadingBanks || loadingPrograms || loadingRules;
-
-    // ── Stat cards ────────────────────────────────────────────────────────────
-    const statCards = useMemo(
-        () => [
-            {
-                label: "Banks",
-                value: banks.length,
-                description: "Active banks in the system",
-                path: routePaths.banks,
-            },
-            {
-                label: "Programs",
-                value: programs.length,
-                description: "Financing programs available",
-                path: routePaths.programs,
-            },
-            {
-                label: "Rules",
-                value: rules.length,
-                description: "Decision rules configured",
-                path: routePaths.rules,
-            },
-        ],
-        [banks.length, programs.length, rules.length]
-    );
-
-    // ── RENDER ────────────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
-        <Layout>
-            <PageHeader
-                title="Dashboard"
-                description="Overview of financing operations and system activity."
-            />
-
-            {/* Welcome card */}
-            {tenant && (
-                <Card className="mb-6">
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Welcome back</p>
-                            <h2 className="text-2xl font-bold text-slate-900">{tenant.name}</h2>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                            <span className="text-sm font-medium text-slate-600">System Online</span>
-                        </div>
-                    </div>
-                </Card>
-            )}
-
-            {/* Stat grid */}
-            {isLoading ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
-                    ))}
-                </div>
-            ) : (
-                <>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {statCards.map((card) => (
-                            <button key={card.label} type="button"
-                                onClick={() => navigate(card.path)} className="text-left">
-                                <Card className="h-full transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-500">{card.label}</p>
-                                            <h3 className="mt-3 text-4xl font-bold text-slate-900">{card.value}</h3>
-                                        </div>
-                                        <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                                            LIVE
-                                        </div>
-                                    </div>
-                                    <p className="mt-5 text-sm text-slate-500">{card.description}</p>
-                                </Card>
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Quick actions */}
-                    <div className="mt-8">
-                        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                            Quick Actions
-                        </h2>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <button type="button" onClick={() => navigate(routePaths.evaluate)} className="text-left">
-                                <Card className="transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-                                    <h3 className="text-lg font-semibold text-slate-900">Run Evaluation</h3>
-                                    <p className="mt-2 text-sm text-slate-500">
-                                        Test customer profiles against financing programs and rule engine.
-                                    </p>
-                                </Card>
-                            </button>
-                            <button type="button" onClick={() => navigate(routePaths.banks)} className="text-left">
-                                <Card className="transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-                                    <h3 className="text-lg font-semibold text-slate-900">Manage Banks</h3>
-                                    <p className="mt-2 text-sm text-slate-500">
-                                        Add, update, or remove financing banks and system configurations.
-                                    </p>
-                                </Card>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* System status */}
-                    <div className="mt-8">
-                        <Card>
-                            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-slate-900">System Status</h3>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        Financing decision engine is operating normally.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-                                    <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                                    API Connected
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                </>
-            )}
-        </Layout>
+      <Layout>
+        <PageHeader title={t("dashboard.title")} description={t("dashboard.loading")} />
+        <StatsSkeleton count={6} />
+      </Layout>
     );
+  }
+
+  const role = tenant?.role || stats?.role || "SALES_AGENT";
+  const apps = stats?.applications;
+  const approvedRate = apps?.total ? Math.round((apps.approved / apps.total) * 100) : 0;
+  const rejectedRate = apps?.total ? Math.round((apps.rejected / apps.total) * 100) : 0;
+
+  return (
+    <Layout>
+      <PageHeader title={t("dashboard.title")} description={`${t("dashboard.welcome")}، ${tenant?.name || stats?.tenant?.name || ""}`} />
+
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+        <motion.div variants={itemAnim}>
+          <Card className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
+                  {role === "ADMIN" ? t("dashboard.dealershipOwner") : role === "MANAGER" ? t("dashboard.manager") : t("dashboard.salesAgent")}
+                </p>
+                <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{stats?.tenant?.name}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--success)" }} />
+                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{role}</span>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={container} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard label={t("dashboard.statCards.totalApplications")} value={apps?.total ?? 0} sub={`${apps?.pending ?? 0} ${t("dashboard.statCards.pending")}`} color="var(--primary-light)" onClick={() => navigate(routePaths.applications)} />
+          <StatCard label={t("dashboard.statCards.totalCustomers")} value={stats?.customers ?? 0} color="var(--secondary)" onClick={() => navigate(routePaths.customers)} />
+          <StatCard label={t("dashboard.statCards.vehicles")} value={stats?.vehicles ?? 0} color="var(--success)" onClick={() => navigate(routePaths.vehicles)} />
+          <StatCard label={t("dashboard.statCards.evaluations")} value={stats?.evaluations ?? 0} color="var(--warning)" onClick={() => navigate(routePaths.audit)} />
+        </motion.div>
+
+        {(role === "ADMIN") && (
+          <motion.div variants={container} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label={t("dashboard.statCards.teamMembers")} value={stats?.team?.length ?? 0} sub={`/ ${stats?.tenant?.max_users ?? 99}`} color="var(--warning)" onClick={() => navigate(routePaths.users)} />
+          </motion.div>
+        )}
+
+        {(role === "ADMIN" || role === "MANAGER") && (
+          <motion.div variants={container} className="grid gap-4 md:grid-cols-3">
+            <motion.div variants={itemAnim}><Card><p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>{t("dashboard.approvalRate")}</p><h3 className="mt-2 text-3xl font-bold" style={{ color: "var(--success)" }}>{approvedRate}%</h3><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{apps?.approved ?? 0} {t("dashboard.approved")}</p></Card></motion.div>
+            <motion.div variants={itemAnim}><Card><p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>{t("dashboard.rejectionRate")}</p><h3 className="mt-2 text-3xl font-bold" style={{ color: "var(--error)" }}>{rejectedRate}%</h3><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{apps?.rejected ?? 0} {t("dashboard.rejected")}</p></Card></motion.div>
+            <motion.div variants={itemAnim}><Card><p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>{t("dashboard.pendingReview")}</p><h3 className="mt-2 text-3xl font-bold" style={{ color: "var(--warning)" }}>{apps?.pending ?? 0}</h3><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{t("dashboard.awaitingDecision")}</p></Card></motion.div>
+          </motion.div>
+        )}
+
+        {(role === "ADMIN" || role === "MANAGER") && stats?.team && stats.team.length > 0 && (
+          <motion.div variants={itemAnim}>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.teamTable.title")}</h2>
+            <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: "var(--glass-border)" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: "var(--bg-card)" }}>
+                    <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.teamTable.name")}</th>
+                    <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.teamTable.role")}</th>
+                    <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.teamTable.manager")}</th>
+                    <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.teamTable.status")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: "var(--glass-border)" }}>
+                  {stats.team.map((m) => (
+                    <tr key={m.id} className="transition-all" style={{ background: "var(--bg-card)" }}>
+                      <td className="px-4 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{m.name}</td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{
+                          background: m.role === "MANAGER" ? "rgba(139,92,246,0.1)" : m.role === "ADMIN" ? "rgba(79,70,229,0.1)" : "var(--bg-card)",
+                          color: m.role === "MANAGER" ? "#A78BFA" : m.role === "ADMIN" ? "var(--primary-light)" : "var(--text-secondary)",
+                        }}>
+                          {m.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm" style={{ color: "var(--text-muted)" }}>{m.manager_name || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{
+                          background: m.active ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                          color: m.active ? "var(--success-light)" : "var(--error-light)",
+                        }}>
+                          {m.active ? t("dashboard.teamTable.active") : t("dashboard.teamTable.inactive")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+
+        {role === "ADMIN" && stats?.recentEvaluations && stats.recentEvaluations.length > 0 && (
+          <motion.div variants={itemAnim}>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.recentEvaluations")}</h2>
+            <Card>
+              <div className="overflow-x-auto rounded-lg">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: "var(--bg-card)" }}>
+                      <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.date")}</th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.application")}</th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.by")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: "var(--glass-border)" }}>
+                    {stats.recentEvaluations.map((ev) => (
+                      <tr key={ev.application_id} className="transition-all" style={{ background: "var(--bg-card)" }}>
+                        <td className="px-4 py-3 text-sm" style={{ color: "var(--text-muted)" }}>
+                          {new Date(ev.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => navigate(routePaths.applications)}
+                            className="text-sm font-medium underline-offset-2 hover:underline"
+                            style={{ color: "var(--primary-light)" }}
+                          >
+                            #{ev.application_id}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-sm" style={{ color: "var(--text-primary)" }}>{ev.user_name || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        <motion.div variants={itemAnim}>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>{t("dashboard.quickActions")}</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card hover onClick={() => navigate(routePaths.evaluate)}>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>{t("dashboard.runEvaluation")}</h3>
+              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{t("dashboard.runEvalDesc")}</p>
+            </Card>
+            <Card hover onClick={() => navigate(routePaths.applications)}>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>{t("dashboard.viewApplications")}</h3>
+              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{t("dashboard.viewAppsDesc")}</p>
+            </Card>
+          </div>
+        </motion.div>
+      </motion.div>
+    </Layout>
+  );
 }

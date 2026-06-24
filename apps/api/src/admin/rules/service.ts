@@ -1,9 +1,6 @@
-// src/admin/rules/service.ts
-
 import { db } from "../../db/db.js";
 import type { CreateRuleDTO, UpdateRuleDTO } from "./schema.js";
 
-/* CREATE RULE */
 export async function createRule(data: CreateRuleDTO, tenantId: number) {
   const result = await db.query(
     `INSERT INTO rules (tenant_id, program_id, field, operator, value, action)
@@ -22,7 +19,6 @@ export async function createRule(data: CreateRuleDTO, tenantId: number) {
   return result.rows[0];
 }
 
-/* GET RULES */
 export async function getRules(programId: number, tenantId: number) {
   const result = await db.query(
     `SELECT * FROM rules 
@@ -33,7 +29,6 @@ export async function getRules(programId: number, tenantId: number) {
   return result.rows;
 }
 
-/* UPDATE RULE */
 export async function updateRule(
   id: number,
   data: UpdateRuleDTO,
@@ -66,7 +61,6 @@ export async function updateRule(
   return result.rows[0];
 }
 
-/* DELETE RULE */
 export async function deleteRule(id: number, tenantId: number) {
   const result = await db.query(
     `DELETE FROM rules 
@@ -76,4 +70,5 @@ export async function deleteRule(id: number, tenantId: number) {
   );
 
   if (!result.rows[0]) throw new Error("Rule not found");
+  return result.rows[0];
 }

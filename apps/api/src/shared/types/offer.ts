@@ -1,19 +1,33 @@
-// src/types/offer.ts
+import type { EvaluationStatus } from "./result.js";
 
-import type { EvaluationStatus } from "./result.js"; //  import الجديد
 export type Offer = {
   programId: number;
   bankId: number;
-  status: EvaluationStatus;  // مهم
+  programName?: string;
+  bankName?: string;
+  status: EvaluationStatus;
   installment: number;
   totalPayment: number;
   interestRate: number;
   months: number;
   financeAmount: number;
+  downPayment: number;
   dti: number;
   riskScore: number;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
   affordabilityScore: number;
-  reasons?: any[]; //  لتضمين أسباب الرفض أو التعديل في العرض
+  approvalProbability: number;
+  programScore?: number;
+  reasons?: Array<{ type: string; message: string; impact: string }>;
+};
+
+export type OptimizationSuggestion = {
+  type: "DOWN_PAYMENT" | "DURATION" | "PROGRAM";
+  label: string;
+  currentValue?: string;
+  suggestedValue: string;
+  currentApproval?: number;
+  projectedApproval: number;
+  impact: "HIGH" | "MEDIUM" | "LOW";
 };
 

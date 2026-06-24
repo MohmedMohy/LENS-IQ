@@ -156,5 +156,6 @@ export async function evaluateApplication(
 
         interestModifier,
         maxMonthsModifier,
+        calculationMethod: program.calculationMethod,
     };
 }

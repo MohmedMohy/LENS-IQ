@@ -21,4 +21,8 @@ export const queryKeys = {
     applications: ["applications"] as const,
 
     profile: ["profile"] as const,
+
+    users: ["users"] as const,
+
+    audit: ["audit"] as const,
 } as const;

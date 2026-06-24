@@ -24,38 +24,30 @@ function normalizeCustomer(raw: Record<string, unknown>): Customer {
         owns_property: Boolean(raw.owns_property),
         owns_car: Boolean(raw.owns_car),
         salary_transfer: Boolean(raw.salary_transfer),
+        tax_card: raw.tax_card != null ? String(raw.tax_card) : null,
+        commercial_registry: raw.commercial_registry != null ? String(raw.commercial_registry) : null,
     };
 }
 
 export const customersApi = {
     getAll: async (): Promise<Customer[]> => {
-        const { data } = await apiClient.get<{ success: boolean; data: Customer[] }>(
-            "/admin/customers"
-        );
-        return data.data.map(normalizeCustomer);
+        const { data } = await apiClient.get<Customer[]>("/admin/customers");
+        return data.map(normalizeCustomer);
     },
 
     getById: async (id: number): Promise<Customer> => {
-        const { data } = await apiClient.get<{ success: boolean; data: Customer }>(
-            `/admin/customers/${id}`
-        );
-        return normalizeCustomer(data.data as Record<string, unknown>);
+        const { data } = await apiClient.get<Customer>(`/admin/customers/${id}`);
+        return normalizeCustomer(data as Record<string, unknown>);
     },
 
     create: async (payload: CreateCustomerPayload): Promise<Customer> => {
-        const { data } = await apiClient.post<{ success: boolean; data: Customer }>(
-            "/admin/customers",
-            payload
-        );
-        return normalizeCustomer(data.data as Record<string, unknown>);
+        const { data } = await apiClient.post<Customer>("/admin/customers", payload);
+        return normalizeCustomer(data as Record<string, unknown>);
     },
 
     update: async (id: number, payload: UpdateCustomerPayload): Promise<Customer> => {
-        const { data } = await apiClient.patch<{ success: boolean; data: Customer }>(
-            `/admin/customers/${id}`,
-            payload
-        );
-        return normalizeCustomer(data.data as Record<string, unknown>);
+        const { data } = await apiClient.patch<Customer>(`/admin/customers/${id}`, payload);
+        return normalizeCustomer(data as Record<string, unknown>);
     },
 
     remove: async (id: number): Promise<void> => {

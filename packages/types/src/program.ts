@@ -19,6 +19,7 @@ export interface Program {
   min_months: number;
   max_months: number;
   min_down_payment_percent: number;
+  max_down_payment_percent: number;
   max_finance_amount: number | null;
   admin_fees_percent: number;
   active: boolean;

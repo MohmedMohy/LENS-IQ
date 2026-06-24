@@ -9,10 +9,10 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
             min_salary, max_customer_age, salary_transfer_required,
             max_car_age, allowed_conditions, max_vehicle_price,
             interest_rate, profit_rate, min_months, max_months,
-            min_down_payment_percent, max_finance_amount, admin_fees_percent,
+            min_down_payment_percent, max_down_payment_percent, max_finance_amount, admin_fees_percent,
             active
         ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
         ) RETURNING *`,
     [
       tenantId,
@@ -31,6 +31,7 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
       data.min_months,
       data.max_months,
       data.min_down_payment_percent,
+      data.max_down_payment_percent,
       data.max_finance_amount ?? null,
       data.admin_fees_percent,
       data.active,
@@ -62,9 +63,9 @@ export async function updateProgram(id: number, data: UpdateProgramDTO, tenantId
             min_salary=$5, max_customer_age=$6, salary_transfer_required=$7,
             max_car_age=$8, allowed_conditions=$9, max_vehicle_price=$10,
             interest_rate=$11, profit_rate=$12, min_months=$13, max_months=$14,
-            min_down_payment_percent=$15, max_finance_amount=$16, admin_fees_percent=$17,
-            active=$18
-        WHERE id=$19 AND tenant_id=$20
+            min_down_payment_percent=$15, max_down_payment_percent=$16, max_finance_amount=$17, admin_fees_percent=$18,
+            active=$19
+        WHERE id=$20 AND tenant_id=$21
         RETURNING *`,
     [
       data.bank_id ?? p.bank_id,
@@ -82,6 +83,7 @@ export async function updateProgram(id: number, data: UpdateProgramDTO, tenantId
       data.min_months ?? p.min_months,
       data.max_months ?? p.max_months,
       data.min_down_payment_percent ?? p.min_down_payment_percent,
+      data.max_down_payment_percent ?? p.max_down_payment_percent,
       data.max_finance_amount ?? p.max_finance_amount,
       data.admin_fees_percent ?? p.admin_fees_percent,
       data.active ?? p.active,

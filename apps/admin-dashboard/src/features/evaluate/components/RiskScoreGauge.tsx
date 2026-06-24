@@ -1,55 +1,78 @@
+import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 import type { RiskLevel } from "./types";
 
-// شكل الـ props
 type Props = {
-    score: number;
-    level: RiskLevel;
+  score: number;
+  level: RiskLevel;
+  size?: number;
 };
 
-export default function RiskScoreGauge({
-    score,
-    level,
-}: Props) {
+const levelConfig: Record<RiskLevel, { color: string; track: string }> = {
+  LOW: { color: "#10B981", track: "rgba(16,185,129,0.15)" },
+  MEDIUM: { color: "#F59E0B", track: "rgba(245,158,11,0.15)" },
+  HIGH: { color: "#EF4444", track: "rgba(239,68,68,0.15)" },
+};
 
-    // تحديد اللون بناءً على مستوى المخاطرة
-    const colors: Record<RiskLevel, string> = {
-        LOW: "bg-green-400/20 border-green-500/40 text-green-300",
-        MEDIUM: "bg-amber-400/20 border-amber-500/40 text-amber-300",
-        HIGH: "bg-red-500/20 border-red-500/40 text-red-300",
-    };
+const labelMapKey: Record<RiskLevel, string> = {
+  LOW: "evaluate.lowRisk",
+  MEDIUM: "evaluate.mediumRisk",
+  HIGH: "evaluate.highRisk",
+};
 
-    return (
-        <div
-            className={`
-        w-40
-        h-40
-        rounded-full
-        border-4
-        flex
-        flex-col
-        items-center
-        justify-center
-        backdrop-blur-md
-        bg-white/5
-        ${colors[level]}
-      `}
+export default function RiskScoreGauge({ score, level, size = 180 }: Props) {
+  const { t } = useTranslation();
+  const cfg = levelConfig[level];
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="relative flex flex-col items-center justify-center">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={cfg.track}
+          strokeWidth={strokeWidth}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={cfg.color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <motion.span
+          className="text-5xl font-bold tracking-tight"
+          style={{ color: cfg.color }}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5, duration: 0.4, ease: "easeOut" }}
         >
-
-            {/* عرض النسبة المئوية */}
-            <span className="text-4xl font-bold">
-                {score}%
-            </span>
-
-            {/* مستوى المخاطرة */}
-            <span className="text-sm uppercase mt-1">
-                {level}
-            </span>
-
-            {/* النص السفلي */}
-            <span className="text-xs tracking-widest mt-2 opacity-70">
-                RISK SCORE
-            </span>
-
-        </div>
-    );
+          {score}%
+        </motion.span>
+        <motion.span
+          className="mt-1 text-xs font-semibold uppercase tracking-widest"
+          style={{ color: cfg.color }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.7 }}
+          transition={{ delay: 0.7 }}
+        >
+          {t(labelMapKey[level])}
+        </motion.span>
+      </div>
+    </div>
+  );
 }

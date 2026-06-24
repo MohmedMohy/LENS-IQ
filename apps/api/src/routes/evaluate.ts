@@ -3,6 +3,8 @@ import { db } from "../db/db.js";
 import { getPrograms } from "../services/getPrograms.js";
 import { compareOffers, rankOffers } from "../engine/index.js";
 import { authMiddleware } from "../auth/auth.middleware.js";
+import { sendSuccess, sendError } from "../shared/response.js";
+import { logAudit } from "../shared/audit.service.js";
 
 export async function evaluateRoutes(fastify: FastifyInstance) {
     fastify.post<{ Body: { application_id: number } }>(
@@ -32,12 +34,10 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                 const row = appResult.rows[0];
 
                 if (!row) {
-                    return reply.status(404).send({
-                        error: "Application not found"
-                    });
+                    return sendError(reply, "Application not found", 404);
                 }
 
-                // 2. Derive engine input (TEMP layer - will move to engine later)
+                // 2. Derive engine input
                 const currentYear = new Date().getFullYear();
 
                 const input = {
@@ -51,7 +51,6 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                     club_membership: null,
                     insurance_number: null,
                     requestedDownPayment: Number(row.requested_down_payment),
-                    down_payment: Number(row.requested_down_payment),
                     job_type: row.job_type,
                     car_age: currentYear - Number(row.manufacturing_year),
                     salary_transfer: Boolean(row.salary_transfer),
@@ -60,68 +59,46 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                 // 3. Load programs
                 const programs = await getPrograms(tenantId);
 
-                // 4. Engine execution (still legacy for now)
+                // 4. Clear old offers for this application (idempotency)
+                await db.query(
+                    `DELETE FROM offers WHERE application_id = $1 AND tenant_id = $2`,
+                    [application_id, tenantId]
+                );
+
+                // 5. Engine execution
                 const offers = await compareOffers(input, programs, tenantId);
 
-                // 5. Persist offers
-                for (const offer of offers) {
+                // 6. Persist offers (batch insert)
+                if (offers.length > 0) {
+                    const values = offers.map((o, i) => {
+                        const base = i * 16;
+                        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9},$${base+10},$${base+11},$${base+12},$${base+13},$${base+14},$${base+15},$${base+16})`;
+                    }).join(",");
+                    const params = offers.flatMap(o => [
+                        tenantId, application_id, o.programId, o.bankId,
+                        o.status, o.installment, o.totalPayment,
+                        o.financeAmount ?? 0, o.downPayment, o.interestRate,
+                        o.months, o.dti, o.riskScore, o.riskLevel,
+                        o.affordabilityScore, JSON.stringify(o.reasons ?? [])
+                    ]);
                     await db.query(
-                        `
-            INSERT INTO offers (
-              tenant_id,
-              application_id,
-              program_id,
-              bank_id,
-              status,
-              installment,
-              total_payment,
-              finance_amount,
-              down_payment,
-              interest_rate,
-              months,
-              dti,
-              risk_score,
-              risk_level,
-              affordability_score,
-              reasons
-            )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-            `,
-                        [
-                            tenantId,
-                            application_id,
-                            offer.programId,
-                            offer.bankId,
-                            offer.status,
-                            offer.installment,
-                            offer.totalPayment,
-                            offer.financeAmount ?? 0,
-                            Number(row.requested_down_payment),
-                            offer.interestRate,
-                            offer.months,
-                            offer.dti,
-                            offer.riskScore,
-                            offer.riskLevel,
-                            offer.affordabilityScore,
-                            JSON.stringify(offer.reasons ?? [])
-                        ]
+                        `INSERT INTO offers (tenant_id, application_id, program_id, bank_id, status, installment, total_payment, finance_amount, down_payment, interest_rate, months, dti, risk_score, risk_level, affordability_score, reasons) VALUES ${values}`,
+                        params
                     );
                 }
 
-                // 6. Rank approved offers
+                // 7. Rank approved offers
                 const approved = offers.filter(o => o.status === "APPROVED");
                 const ranked = rankOffers(approved);
 
-                // 7. Response
-                return reply.send({
-                    bestOffer: ranked[0] ?? null,
-                    offers
-                });
+                // 8. Audit
+                logAudit({ tenantId, userId: req.userId, action: "evaluate", entity: "application", entityId: application_id, details: { offers_count: offers.length, best_status: ranked[0]?.status ?? null } });
+
+                // 9. Response
+                return sendSuccess(reply, { bestOffer: ranked[0] ?? null, offers });
             } catch (err: any) {
                 fastify.log.error(err);
-                return reply.status(500).send({
-                    error: err?.message ?? "Internal Server Error"
-                });
+                return sendError(reply, err?.message ?? "Internal Server Error", 500);
             }
         }
     );

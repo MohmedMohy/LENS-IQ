@@ -5,13 +5,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/data-display/DataTable";
 import PageHeader from "@/components/navigation/PageHeader";
 import Card from "@/components/ui/card/Card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { customersApi } from "@/features/Customers/api/customers.api";
 import { queryKeys } from "@/lib/Querykeys";
 import type { Customer, CreateCustomerPayload, UpdateCustomerPayload } from "@/types";
+import { useAuthStore } from "@/store/auth.store";
 
 // ── Zod schema (تم تحديثه لحل مشاكل الحقول الفارغة) ────────────────────────
 
@@ -62,18 +65,22 @@ const customerSchema = z.object({
     owns_car: z.boolean().default(false),
 
     salary_transfer: z.boolean().default(false),
+
+    tax_card: z.string().nullish(),
+
+    commercial_registry: z.string().nullish(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const JOB_TYPE_LABELS: Record<Customer["job_type"], string> = {
-    private: "Private Sector",
-    government: "Government",
-    corporate: "Corporate",
-    freelancer: "Freelancer",
-    retired: "Retired",
+const JOB_TYPE_KEYS: Record<string, string> = {
+    private: "customers.privateSector",
+    government: "customers.government",
+    corporate: "customers.corporate",
+    freelancer: "customers.freelancer",
+    retired: "customers.retired",
 };
 
 function FieldError({ message }: { message?: string }) {
@@ -115,6 +122,7 @@ type CustomerFormProps = {
 };
 
 function CustomerForm({ initial, saving, error, submitLabel, onSubmit, onCancel }: CustomerFormProps) {
+    const { t } = useTranslation();
     const {
         register,
         handleSubmit,
@@ -128,6 +136,8 @@ function CustomerForm({ initial, saving, error, submitLabel, onSubmit, onCancel 
             owns_property: false,
             owns_car: false,
             salary_transfer: false,
+            tax_card: undefined,
+            commercial_registry: undefined,
             ...initial,
         },
     });
@@ -135,90 +145,97 @@ function CustomerForm({ initial, saving, error, submitLabel, onSubmit, onCancel 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <SectionLabel>Personal Info</SectionLabel>
+                <SectionLabel>{t("customers.personalInfo")}</SectionLabel>
 
-                    <Field label="Full Name *">
+                    <Field label={t("customers.fullName")}>
                         <input {...register("name")} placeholder="Ahmed Mohamed" className={INPUT_CLS} />
                         <FieldError message={errors.name?.message} />
                     </Field>
 
-                    <Field label="National ID *">
+                    <Field label={t("customers.nationalId")}>
                         <input {...register("national_id")} placeholder="29901011234567" maxLength={14} className={INPUT_CLS} />
                         <FieldError message={errors.national_id?.message} />
                     </Field>
 
-                    <Field label="Phone *">
+                    <Field label={t("customers.phone")}>
                         <input {...register("phone")} placeholder="01012345678" className={INPUT_CLS} />
                         <FieldError message={errors.phone?.message} />
                     </Field>
 
-                    <Field label="Birth Date *">
+                    <Field label={t("customers.birthDate")}>
                         <input type="date" {...register("birth_date")} className={INPUT_CLS} />
                         <FieldError message={errors.birth_date?.message} />
                     </Field>
 
-                    <Field label="Marital Status">
+                    <Field label={t("customers.maritalStatus")}>
                         <select {...register("marital_status")} className={SELECT_CLS}>
-                            <option value="">Select</option>
-                            <option value="single">Single</option>
-                            <option value="married">Married</option>
-                            <option value="divorced">Divorced</option>
-                            <option value="widowed">Widowed</option>
+                            <option value="">{t("customers.select")}</option>
+                            <option value="single">{t("customers.single")}</option>
+                            <option value="married">{t("customers.married")}</option>
+                            <option value="divorced">{t("customers.divorced")}</option>
+                            <option value="widowed">{t("customers.widowed")}</option>
                         </select>
                     </Field>
 
-                    <SectionLabel>Employment</SectionLabel>
+                    <SectionLabel>{t("customers.employment")}</SectionLabel>
 
-                    <Field label="Monthly Salary (EGP) *">
+                    <Field label={t("customers.monthlyIncome")}>
                         <input type="number" min={0} step="any" {...register("salary")} placeholder="15000" className={INPUT_CLS} />
                         <FieldError message={errors.salary?.message} />
                     </Field>
 
-                    <Field label="Job Type *">
+                    <Field label={t("customers.jobType")}>
                         <select {...register("job_type")} className={SELECT_CLS}>
-                            {Object.entries(JOB_TYPE_LABELS).map(([v, l]) => (
+                            {Object.entries(JOB_TYPE_KEYS).map(([v, key]) => (
                                 <option key={v} value={v}>
-                                    {l}
+                                    {t(key)}
                                 </option>
                             ))}
                         </select>
                     </Field>
 
-                    <Field label="Employer Name">
+                    <Field label={t("customers.employerName")}>
                         <input {...register("employer_name")} placeholder="ABC Company" className={INPUT_CLS} />
                     </Field>
 
-                    <Field label="Tenure (months)">
+                    <Field label={t("customers.tenure")}>
                         <input type="number" min={0} {...register("employment_tenure_months")} placeholder="24" className={INPUT_CLS} />
                     </Field>
 
-                    <SectionLabel>Financial</SectionLabel>
+                    <SectionLabel>{t("customers.financial")}</SectionLabel>
 
-                    <Field label="Monthly Liabilities (EGP)">
+                    <Field label={t("customers.monthlyLiabilities")}>
                         <input type="number" min={0} step="any" {...register("current_liabilities")} placeholder="0" className={INPUT_CLS} />
                         <FieldError message={errors.current_liabilities?.message} />
                     </Field>
 
-<Field label="Additional Income (EGP)">
+                    <Field label={t("customers.additionalIncome")}>
                         <input type="number" min={0} step="any" {...register("additional_income")} placeholder="0" className={INPUT_CLS} />
                     </Field>
 
-<SectionLabel>Other Details</SectionLabel>
+                    <SectionLabel>{t("customers.otherDetails")}</SectionLabel>
 
-                    <Field label="Insurance Number">
+                    <Field label={t("customers.insuranceNumber")}>
                         <input {...register("insurance_number")} placeholder="123456789" className={INPUT_CLS} />
                     </Field>
 
-<Field label="Club Membership">
+                    <Field label={t("customers.clubMembership")}>
                         <input {...register("club_membership")} placeholder="Gezira Club" className={INPUT_CLS} />
                     </Field>
 
-                                                                                                                                                                            < div className = "col-span-full grid grid-cols-1 gap-3 sm:grid-cols-3" >
-                                                                                                                                                                            {
-                                                                                                                                                                                [
-                                                                                                                                                                                { key: "salary_transfer" as const, label: "Salary Transfer", desc: "Salary transferred to bank" },
-                                                                                                                                                                                { key: "owns_property" as const, label: "Owns Property", desc: "Apartment or land" },
-                                                                                                                                                                                { key: "owns_car" as const, label: "Owns Car", desc: "Has current vehicle" },
+                    <Field label={t("customers.taxCard")}>
+                        <input {...register("tax_card")} placeholder="Tax card number" className={INPUT_CLS} />
+                    </Field>
+
+                    <Field label={t("customers.commercialRegistry")}>
+                        <input {...register("commercial_registry")} placeholder="Commercial registry number" className={INPUT_CLS} />
+                    </Field>
+
+                <div className="col-span-full grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {[
+                        { key: "salary_transfer" as const, label: t("customers.salaryTransfer"), desc: t("customers.salaryTransferDesc") },
+                        { key: "owns_property" as const, label: t("customers.ownsProperty"), desc: t("customers.ownsPropertyDesc") },
+                        { key: "owns_car" as const, label: t("customers.ownsCar"), desc: t("customers.ownsCarDesc") },
                     ].map((item) => (
                         <label key={item.key} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-slate-300">
                             <input type="checkbox" {...register(item.key)} className="h-4 w-4 accent-blue-600" />
@@ -240,11 +257,11 @@ function CustomerForm({ initial, saving, error, submitLabel, onSubmit, onCancel 
             <div className="flex justify-end gap-3 pt-2">
                 {onCancel && (
                     <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        Cancel
+                        {t("common.cancel")}
                     </button>
                 )}
                 <button type="submit" disabled={saving} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
-                    {saving ? "Saving..." : submitLabel}
+                    {saving ? t("common.saving") : submitLabel}
                 </button>
             </div>
         </form>
@@ -254,7 +271,10 @@ function CustomerForm({ initial, saving, error, submitLabel, onSubmit, onCancel 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CustomersPage() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
+    const tenant = useAuthStore((s) => s.tenant);
+    const isWriteRole = tenant?.role === "ADMIN" || tenant?.role === "MANAGER";
     const [showForm, setShowForm] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
@@ -274,7 +294,7 @@ export default function CustomersPage() {
             setShowForm(false);
             setFormError(null);
             void invalidate();
-            toast.success("Customer added successfully.");
+            toast.success(t("toasts.created"));
         },
         onError: (err: Error) => setFormError(err.message),
     });
@@ -285,7 +305,7 @@ export default function CustomersPage() {
             setEditingCustomer(null);
             setEditError(null);
             void invalidate();
-            toast.success("Customer updated successfully.");
+            toast.success(t("toasts.updated"));
         },
         onError: (err: Error) => setEditError(err.message),
     });
@@ -294,9 +314,9 @@ export default function CustomersPage() {
         mutationFn: (c: Customer) => customersApi.remove(c.id),
         onSuccess: (_data, c) => {
             void invalidate();
-            toast.success(`"${c.name}" deleted.`);
+            toast.success(t("toasts.deleted", { name: c.name }));
         },
-        onError: () => toast.error("Could not delete customer."),
+        onError: () => toast.error(t("toasts.failed")),
     });
 
     // إصلاح: حماية دالة البحث من القيم الفارغة لمنع الانهيار
@@ -309,22 +329,19 @@ export default function CustomersPage() {
     return (
         <Layout>
         <PageHeader
-            title="Customers"
-            description="Manage customer profiles and financial data."
-            action={
-                <button type="button" onClick={() => setShowForm((v) => !v)} className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                    {showForm ? "Cancel" : "+ Add Customer"}
-                </button>
-            }
+            title={t("customers.title")}
+            description={t("customers.description")}
+            action={isWriteRole ? () => setShowForm((v) => !v) : undefined}
+            actionLabel={showForm ? t("common.cancel") : t("customers.addCustomer")}
         />
 
-        {showForm && (
+        {isWriteRole && showForm && (
             <Card className="mb-6">
-                <p className="mb-4 text-sm font-semibold text-slate-700">New Customer</p>
+                <p className="mb-4 text-sm font-semibold text-slate-700">{t("customers.newCustomer")}</p>
                 <CustomerForm
                     saving={createMutation.isPending}
                     error={formError}
-                    submitLabel="Add Customer"
+                    submitLabel={t("customers.addCustomer")}
                     onSubmit={(data) => {
                         const payload = {
                             ...data,
@@ -333,6 +350,8 @@ export default function CustomersPage() {
                             insurance_number: data.insurance_number ?? null,
                             club_membership: data.club_membership ?? null,
                             marital_status: data.marital_status ?? null,
+                            tax_card: data.tax_card ?? null,
+                            commercial_registry: data.commercial_registry ?? null,
                         };
                         createMutation.mutate(payload as CreateCustomerPayload);
                     }}
@@ -349,7 +368,7 @@ export default function CustomersPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, ID, or phone..."
+                placeholder={t("customers.search")}
                 className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
         </Card>
@@ -364,29 +383,28 @@ export default function CustomersPage() {
 
 {
     isLoading ? (
-        <Card><p className= "text-sm text-slate-500" > Loading customers...</p></Card >
+        <Card><TableSkeleton /></Card>
             ) : (
         <Card>
         <div className= "mb-3 flex items-center justify-between" >
         <p className="text-sm font-medium text-slate-500" >
-            { filtered.length } customer{ filtered.length !== 1 ? "s" : "" }
-    { search ? " found" : " total" }
+             {t("customers.count", { count: filtered.length })} {search ? t("customers.found") : t("customers.total")}
     </p>
         </div>
         < DataTable<Customer>
                     data={filtered}
                     columns={[
-                        { key: "id", label: "ID" },
-                        { key: "name", label: "Name" },
-                        { key: "national_id", label: "National ID" },
-                        { key: "phone", label: "Phone" },
-                        { key: "job_type", label: "Job Type" },
-                        { key: "salary", label: "Salary (EGP)" },
-                        { key: "current_liabilities", label: "Liabilities" },
-                        { key: "salary_transfer", label: "Salary Transfer" },
+                        { key: "id", label: t("customers.id") },
+                        { key: "name", label: t("customers.nameField") },
+                        { key: "national_id", label: t("customers.nationalId") },
+                        { key: "phone", label: t("customers.phone") },
+                        { key: "job_type", label: t("customers.jobType"), render: (value) => t(JOB_TYPE_KEYS[value as string] ?? (value as string)) },
+                        { key: "salary", label: t("customers.salary") },
+                        { key: "current_liabilities", label: t("customers.liabilities") },
+                        { key: "salary_transfer", label: t("customers.salaryTransfer") },
                     ]}
-                    onEdit={(c) => setEditingCustomer(c)}
-                    onDelete={(c) => deleteMutation.mutate(c)}
+                    onEdit={isWriteRole ? (c) => setEditingCustomer(c) : undefined}
+                    onDelete={isWriteRole ? (c) => deleteMutation.mutate(c) : undefined}
                 />
     </Card>
             )}
@@ -394,9 +412,9 @@ export default function CustomersPage() {
         {editingCustomer && (
             <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
                 <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
-                    <h2 className="mb-1 text-xl font-bold text-slate-900">Edit Customer</h2>
+                    <h2 className="mb-1 text-xl font-bold text-slate-900">{t("customers.editCustomer")}</h2>
                     <p className="mb-6 text-sm text-slate-500">
-                        {editingCustomer.name} — ID: {editingCustomer.national_id}
+                        {editingCustomer.name} — {t("customers.idLabel")}: {editingCustomer.national_id}
                     </p>
                     <CustomerForm
                         initial={{
@@ -416,19 +434,23 @@ export default function CustomersPage() {
                             owns_property: editingCustomer.owns_property,
                             owns_car: editingCustomer.owns_car,
                             salary_transfer: editingCustomer.salary_transfer,
+                            tax_card: editingCustomer.tax_card ?? undefined,
+                            commercial_registry: editingCustomer.commercial_registry ?? undefined,
                         }}
                         saving={updateMutation.isPending}
                         error={editError}
-                        submitLabel="Save Changes"
+                        submitLabel={t("common.saveChanges")}
                         onSubmit={(data) => {
                             const payload = {
                                 ...data,
                                 employer_name: data.employer_name ?? null,
                                 employment_tenure_months: data.employment_tenure_months ?? null,
-                                insurance_number: data.insurance_number ?? null,
-                                club_membership: data.club_membership ?? null,
-                                marital_status: data.marital_status ?? null,
-                            };
+                            insurance_number: data.insurance_number ?? null,
+                            club_membership: data.club_membership ?? null,
+                            marital_status: data.marital_status ?? null,
+                            tax_card: data.tax_card ?? null,
+                            commercial_registry: data.commercial_registry ?? null,
+                        };
                             updateMutation.mutate({ id: editingCustomer.id, payload: payload as UpdateCustomerPayload });
                         }}
                         onCancel={() => {

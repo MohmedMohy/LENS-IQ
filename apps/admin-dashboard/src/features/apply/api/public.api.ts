@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosResponse } from "axios";
 import { ENV } from "@/config/env";
 
 const publicClient = axios.create({
@@ -6,6 +7,17 @@ const publicClient = axios.create({
     timeout: 15000,
     headers: { "Content-Type": "application/json" },
 });
+
+// Unwrap { success, data } → data for public endpoints
+publicClient.interceptors.response.use(
+    (response: AxiosResponse) => {
+        const body = response.data;
+        if (body && typeof body === "object" && body.success === true && "data" in body) {
+            response.data = body.data;
+        }
+        return response;
+    }
+);
 
 export type PublicVehicle = {
     id: number;

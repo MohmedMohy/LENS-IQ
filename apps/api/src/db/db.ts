@@ -43,16 +43,15 @@ function resolvePoolConfig(): pg.PoolConfig {
     cfg.user ??= "postgres";
     cfg.host ??= "localhost";
     cfg.database ??= "car_financing_system";
-    cfg.password ??= "admin123";
     cfg.ssl = undefined;
   }
 
-  if (isProduction && !cfg.password) {
-    throw new Error("DB_PASSWORD environment variable is required in production");
+  if (!cfg.password) {
+    throw new Error("DB_PASSWORD environment variable is required");
   }
 
-  if (isProduction && !cfg.user) {
-    throw new Error("DB_USER environment variable is required in production");
+  if (!cfg.user) {
+    throw new Error("DB_USER environment variable is required");
   }
 
   return cfg;

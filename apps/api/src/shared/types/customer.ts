@@ -4,9 +4,9 @@ export interface Customer {
     name: string;
     national_id: string;
     phone: string;
-    birth_date: string; // ISO format date string
+    birth_date: string;
     salary: number;
-    jop_type: "private" | "goverment" | "corporate" | "freelancer" | "retired";
+    job_type: "private" | "government" | "corporate" | "freelancer" | "retired";
     current_liabilities: number;
     additional_income: number;
     employer_name: string | null;

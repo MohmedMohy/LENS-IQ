@@ -1,47 +1,63 @@
-// src/api/client.ts
-
 import axios from "axios";
-import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import type { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
 
 import { ENV } from "@/config/env";
 import { useAuthStore } from "@/store/auth.store";
 import { ApiError } from "@/lib/api-error";
 
 export const apiClient = axios.create({
-    baseURL: ENV.API_URL,
+    baseURL: `${ENV.API_URL}`,
     timeout: 15000,
     headers: {
         "Content-Type": "application/json",
     },
+    withCredentials: true,
 });
 
-// ======================
-// Request Interceptor
-// ======================
-apiClient.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-        const token = useAuthStore.getState().accessToken;
+let isRefreshing = false;
+let pendingQueue: Array<{
+    resolve: (value: unknown) => void;
+    reject: (reason: unknown) => void;
+}> = [];
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+function processQueue(error: unknown) {
+    pendingQueue.forEach(({ resolve, reject }) => {
+        if (error) {
+            reject(error);
+        } else {
+            resolve(undefined);
         }
+    });
+    pendingQueue = [];
+}
 
-        return config;
-    },
-    (error: AxiosError) => {
-        console.error("Request Error:", error);
-        return Promise.reject(error);
+// ======================
+// Request Interceptor — attach Bearer token
+// ======================
+apiClient.interceptors.request.use((config) => {
+    const token = useAuthStore.getState().token;
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
-);
+    return config;
+});
 
 // ======================
 // Response Interceptor
 // ======================
 apiClient.interceptors.response.use(
-    (response) => response,
-    (error: AxiosError<{ message?: string; error?: string }>) => {
+    (response: AxiosResponse) => {
+        const body = response.data;
+        if (body && typeof body === "object" && body.success === true && "data" in body) {
+            response.data = body.data;
+        }
+        return response;
+    },
+    async (error: AxiosError<{ message?: string; error?: string }>) => {
         const status = error.response?.status ?? 0;
-        const isLoginRequest = error.config?.url?.includes("/auth/login");
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const isLoginRequest = originalRequest?.url?.includes("/auth/login") ?? false;
+        const isRefreshRequest = originalRequest?.url?.includes("/auth/refresh") ?? false;
 
         const message =
             error.response?.data?.message ??
@@ -58,8 +74,37 @@ apiClient.interceptors.response.use(
                                 ? "Server error. Try again later."
                                 : error.message ?? "Something went wrong.");
 
+        // Try refresh token on 401 (except login/refresh)
+        if (status === 401 && !isLoginRequest && !isRefreshRequest && !originalRequest._retry) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    pendingQueue.push({ resolve, reject });
+                }).then(() => {
+                    return apiClient(originalRequest);
+                });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                const refreshRes = await apiClient.post("/auth/refresh");
+                const data = refreshRes.data as { accessToken?: string; tenant?: unknown };
+                if (data?.accessToken && data?.tenant) {
+                    useAuthStore.getState().setSession(data.tenant as any, data.accessToken);
+                }
+                processQueue(null);
+                return apiClient(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError);
+                useAuthStore.getState().logout();
+                return Promise.reject(new ApiError(401, "Session expired. Please sign in again."));
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
         if (status === 401 && !isLoginRequest) {
-            console.warn("Unauthorized → logout");
             useAuthStore.getState().logout();
         }
 

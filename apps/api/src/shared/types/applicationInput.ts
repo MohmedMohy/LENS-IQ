@@ -8,8 +8,7 @@ export interface ApplicationInput {
     owns_car: boolean;
     club_membership: string | null;
     insurance_number: string | null;
-    requestedDownPayment?: number;
-    down_payment?: number;
+    requestedDownPayment: number;
     job_type?: string;
     car_age?: number;
     salary_transfer?: boolean;

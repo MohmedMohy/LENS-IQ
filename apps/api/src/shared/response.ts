@@ -8,8 +8,10 @@ export interface ApiResponse<T = unknown> {
   errors?: unknown;
 }
 
-export function sendSuccess<T>(reply: FastifyReply, data: T, statusCode = 200) {
-  return reply.status(statusCode).send({ success: true, data });
+export function sendSuccess<T>(reply: FastifyReply, data?: T, statusCode = 200) {
+  return reply.status(statusCode).send(
+    data !== undefined ? { success: true, data } : { success: true }
+  );
 }
 
 export function sendError(
