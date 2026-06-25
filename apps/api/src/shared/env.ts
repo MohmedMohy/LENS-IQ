@@ -39,7 +39,11 @@ export function validateEnv(): void {
 
     if (missing.length > 0) {
         throw new Error(
-            `Missing required environment variables: ${missing.join(", ")}`
+            `Missing required environment variables: ${missing.join(", ")}\n\n` +
+            `Generate secrets on your local machine:\n` +
+            `  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"\n\n` +
+            `Then set them in Railway Dashboard → Variables.\n` +
+            `Railway auto-injects DATABASE_URL — you only need to set JWT_SECRET, REFRESH_TOKEN_SECRET, COOKIE_SECRET, and ENCRYPTION_KEY.`
         );
     }
 
