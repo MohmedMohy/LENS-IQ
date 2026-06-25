@@ -129,32 +129,11 @@ export async function authRoutes(fastify: FastifyInstance) {
                 name: info.name,
                 email: info.email,
                 role: info.role,
-                max_users: maxUsers,
+                max_users: 7,
                 user_count: userCount,
             });
         } catch (err) {
             return sendError(reply, (err as Error).message, 404);
-        }
-    });
-
-    fastify.patch("/admin/tenants/settings", { preHandler: [authMiddleware, rbacMiddleware("ADMIN")] }, async (req, reply) => {
-        try {
-            const { max_users } = z.object({
-                max_users: z.number().int().min(1, "Must be at least 1").max(999, "Cannot exceed 999"),
-            }).parse(req.body);
-
-            const result = await db.query(
-                `UPDATE tenants SET max_users = $1 WHERE id = $2 RETURNING id, name, max_users`,
-                [max_users, req.tenantId]
-            );
-
-            if (!result.rows[0]) throw new Error("Tenant not found");
-            return sendSuccess(reply, result.rows[0]);
-        } catch (err) {
-            if (err instanceof z.ZodError) {
-                return sendError(reply, "Validation failed", 400, err.issues);
-            }
-            return sendError(reply, (err as Error).message, 400);
         }
     });
 

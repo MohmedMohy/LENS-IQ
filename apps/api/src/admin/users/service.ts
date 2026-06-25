@@ -3,6 +3,7 @@ import { db } from "../../db/db.js";
 import type { CreateUserInput, UpdateUserInput, UpdateTeamMemberInput } from "./schema.js";
 
 const SALT_ROUNDS = 10;
+const MAX_USERS = 7;
 
 export async function createUser(input: CreateUserInput, tenantId: number) {
     const existing = await db.query(
@@ -11,19 +12,12 @@ export async function createUser(input: CreateUserInput, tenantId: number) {
     );
     if (existing.rows[0]) throw new Error("Email already exists for this tenant");
 
-    const tenantResult = await db.query(
-        `SELECT max_users FROM tenants WHERE id = $1`,
-        [tenantId]
-    );
-    const tenant = tenantResult.rows[0];
-    if (!tenant) throw new Error("Tenant not found");
-
     const countResult = await db.query(
         `SELECT COUNT(*)::int as count FROM users WHERE tenant_id = $1 AND active = true`,
         [tenantId]
     );
-    if (countResult.rows[0].count >= tenant.max_users) {
-        throw new Error(`User limit reached (${tenant.max_users}). Contact your administrator to increase the limit.`);
+    if (countResult.rows[0].count >= MAX_USERS) {
+        throw new Error(`User limit reached (${MAX_USERS}). Maximum ${MAX_USERS} users allowed.`);
     }
 
     const password_hash = await bcrypt.hash(input.password, SALT_ROUNDS);

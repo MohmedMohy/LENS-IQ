@@ -11,7 +11,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
             const userId = req.userId;
 
             const tenantsResult = await db.query(
-                `SELECT name, email, max_users FROM tenants WHERE id = $1`,
+                `SELECT name, email FROM tenants WHERE id = $1`,
                 [tenantId]
             );
             const tenantInfo = tenantsResult.rows[0];
@@ -80,7 +80,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
                 evaluations: evaluationsResult.rows[0].total,
                 recentEvaluations: recentEvaluationsResult.rows,
                 team: teamResult.rows,
-                tenant: { name: tenantInfo.name, email: tenantInfo.email, max_users: tenantInfo.max_users },
+                tenant: { name: tenantInfo.name, email: tenantInfo.email, max_users: 7 },
                 role,
             };
 

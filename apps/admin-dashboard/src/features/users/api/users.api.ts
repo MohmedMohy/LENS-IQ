@@ -35,8 +35,4 @@ export const usersApi = {
         await apiClient.delete(`/admin/users/${id}`);
     },
 
-    updateSettings: async (maxUsers: number): Promise<{ id: number; max_users: number }> => {
-        const response = await apiClient.patch("/admin/tenants/settings", { max_users: maxUsers });
-        return response.data;
-    },
 };

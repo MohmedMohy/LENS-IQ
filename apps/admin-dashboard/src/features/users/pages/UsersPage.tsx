@@ -60,19 +60,6 @@ export default function UsersPage() {
         enabled: !!tenant?.role,
     });
 
-    const [maxUsersInput, setMaxUsersInput] = useState(tenant?.max_users ?? 99);
-    const maxUsersMutation = useMutation({
-        mutationFn: (max_users: number) => usersApi.updateSettings(max_users),
-        onSuccess: (data) => {
-            toast.success("User limit updated successfully");
-            useAuthStore.getState().setSession({ ...tenant!, max_users: data.max_users });
-            setMaxUsersInput(data.max_users);
-        },
-        onError: (err: Error) => {
-            toast.error(err?.message || "Failed to update limit");
-        },
-    });
-
     const createForm = useForm<UserFormValues>({
         resolver: zodResolver(userSchema),
         defaultValues: { name: "", email: "", password: "", role: "SALES_AGENT" },
@@ -263,31 +250,11 @@ export default function UsersPage() {
 
             {isAdmin && (
                 <Card className="mb-6">
-                    <div className="flex items-center justify-between p-6">
-                        <div>
-                            <h3 className="text-sm font-semibold text-slate-700">{t("users.userLimit")}</h3>
-                            <p className="mt-1 text-sm text-slate-500">
-                                {users.length} / {tenant?.max_users ?? 99} {t("users.activeUsers")}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="number"
-                                min={1}
-                                max={999}
-                                value={maxUsersInput}
-                                onChange={(e) => setMaxUsersInput(Number(e.target.value))}
-                                className="w-20 rounded-xl border border-slate-300 px-3 py-2 text-sm text-center outline-none transition focus:border-blue-500"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => maxUsersMutation.mutate(maxUsersInput)}
-                                disabled={maxUsersMutation.isPending || maxUsersInput === tenant?.max_users}
-                                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                            >
-                                {maxUsersMutation.isPending ? t("common.saving") : t("users.setLimit")}
-                            </button>
-                        </div>
+                    <div className="p-6">
+                        <h3 className="text-sm font-semibold text-slate-700">{t("users.userLimit")}</h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                            {users.length} / 7 {t("users.activeUsers")}
+                        </p>
                     </div>
                 </Card>
             )}
