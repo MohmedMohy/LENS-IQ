@@ -1,6 +1,5 @@
 FROM node:20-slim AS base
 WORKDIR /app
-ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
@@ -18,6 +17,7 @@ COPY packages/utils/package.json ./packages/utils/package.json
 RUN npm install
 
 FROM deps AS builder
+ENV NODE_ENV=development
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/api/ ./apps/api/
 COPY apps/admin-dashboard/ ./apps/admin-dashboard/
@@ -26,6 +26,7 @@ RUN cd apps/api && npx tsc -p tsconfig.json && cd /app && \
     cd apps/admin-dashboard && npx vite build && cd /app
 
 FROM base AS runner
+ENV NODE_ENV=production
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
