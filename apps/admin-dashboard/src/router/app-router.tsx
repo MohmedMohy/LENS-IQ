@@ -4,6 +4,7 @@ import { routePaths } from "@/router/route-paths";
 import ProtectedRoute from "@/router/protected-route";
 import { useAuthStore } from "@/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
+import type { Tenant } from "@/types/auth";
 
 const ApplyPage = lazy(() => import("@/features/apply/pages/ApplyPage"));
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
@@ -37,13 +38,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     authApi.me()
       .then((tenant) => {
-        if (!cancelled) setSession(tenant as any);
+        if (!cancelled) setSession(tenant as unknown as Tenant);
       })
       .catch(() => {
         if (!cancelled) logout();
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [setSession, logout]);
 
   if (isLoading) return <Loading />;
   return <>{children}</>;

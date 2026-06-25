@@ -15,19 +15,16 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                 const tenantId = req.tenantId;
                 const { application_id } = req.body;
 
-                // 1. Fetch application full data
                 const appResult = await db.query(
-                    `
-          SELECT a.*,
-                 c.name, c.salary, c.job_type, c.current_liabilities,
-                 c.owns_property, c.owns_car, c.salary_transfer,
-                 c.birth_date,
-                 v.price, v.manufacturing_year, v.condition, v.brand, v.model
-          FROM applications a
-          JOIN customers c ON a.customer_id = c.id
-          JOIN vehicles v ON a.vehicle_id = v.id
-          WHERE a.id = $1 AND a.tenant_id = $2
-          `,
+                    `SELECT a.*,
+                     c.name, c.salary, c.job_type, c.current_liabilities,
+                     c.owns_property, c.owns_car, c.salary_transfer,
+                     c.birth_date,
+                     v.price, v.manufacturing_year, v.condition, v.brand, v.model
+                     FROM applications a
+                     JOIN customers c ON a.customer_id = c.id
+                     JOIN vehicles v ON a.vehicle_id = v.id
+                     WHERE a.id = $1 AND a.tenant_id = $2`,
                     [application_id, tenantId]
                 );
 
@@ -37,7 +34,6 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                     return sendError(reply, "Application not found", 404);
                 }
 
-                // 2. Derive engine input
                 const currentYear = new Date().getFullYear();
 
                 const input = {
@@ -56,21 +52,17 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                     salary_transfer: Boolean(row.salary_transfer),
                 };
 
-                // 3. Load programs
                 const programs = await getPrograms(tenantId);
 
-                // 4. Clear old offers for this application (idempotency)
                 await db.query(
                     `DELETE FROM offers WHERE application_id = $1 AND tenant_id = $2`,
                     [application_id, tenantId]
                 );
 
-                // 5. Engine execution
                 const offers = await compareOffers(input, programs, tenantId);
 
-                // 6. Persist offers (batch insert)
                 if (offers.length > 0) {
-                    const values = offers.map((o, i) => {
+                    const values = offers.map((_, i) => {
                         const base = i * 16;
                         return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9},$${base+10},$${base+11},$${base+12},$${base+13},$${base+14},$${base+15},$${base+16})`;
                     }).join(",");
@@ -87,18 +79,15 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                     );
                 }
 
-                // 7. Rank approved offers
                 const approved = offers.filter(o => o.status === "APPROVED");
                 const ranked = rankOffers(approved);
 
-                // 8. Audit
                 logAudit({ tenantId, userId: req.userId, action: "evaluate", entity: "application", entityId: application_id, details: { offers_count: offers.length, best_status: ranked[0]?.status ?? null } });
 
-                // 9. Response
                 return sendSuccess(reply, { bestOffer: ranked[0] ?? null, offers });
-            } catch (err: any) {
+            } catch (err) {
                 fastify.log.error(err);
-                return sendError(reply, err?.message ?? "Internal Server Error", 500);
+                return sendError(reply, (err as Error)?.message ?? "Internal Server Error", 500);
             }
         }
     );

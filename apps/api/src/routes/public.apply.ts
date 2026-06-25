@@ -18,7 +18,6 @@ const applySchema = z.object({
 });
 
 export async function publicApplyRoutes(fastify: FastifyInstance) {
-    // GET /public/vehicles/:code — قائمة العربيات المتاحة للمعرض
     fastify.get("/public/vehicles/:code", async (req, reply) => {
         try {
             const { code } = req.params as { code: string };
@@ -37,12 +36,11 @@ export async function publicApplyRoutes(fastify: FastifyInstance) {
                 [tenant.id]
             );
             return sendSuccess(reply, { vehicles: vehicles.rows });
-        } catch (err: any) {
-            return sendError(reply, err.message || "حدث خطأ داخلي", 500);
+        } catch (err) {
+            return sendError(reply, (err as Error).message || "حدث خطأ داخلي", 500);
         }
     });
 
-    // POST /public/apply — تقديم طلب تمويل
     fastify.post("/public/apply", async (req, reply) => {
         try {
             const body = applySchema.parse(req.body);
@@ -79,12 +77,12 @@ export async function publicApplyRoutes(fastify: FastifyInstance) {
                 message: "تم إرسال الطلب بنجاح",
             });
 
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "بيانات غير صالحة", 400, err.issues);
             }
             fastify.log.error(err);
-            return sendError(reply, err.message || "حدث خطأ داخلي أثناء معالجة الطلب", 500);
+            return sendError(reply, (err as Error).message || "حدث خطأ داخلي أثناء معالجة الطلب", 500);
         }
     });
 }

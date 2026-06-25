@@ -30,7 +30,7 @@ export async function authMiddleware(
             return;
         }
 
-        const apiKey = req.headers["x-api-key"] as string;
+        const apiKey = req.headers["x-api-key"] as string | undefined;
         if (apiKey) {
             const apiKeyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
             const result = await db.query(

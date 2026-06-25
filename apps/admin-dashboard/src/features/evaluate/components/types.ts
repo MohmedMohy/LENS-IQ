@@ -1,18 +1,14 @@
-export type DecisionStatus = "APPROVED" | "CONDITIONAL" | "REJECTED";
-export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
-export type ImpactLevel = "LOW" | "MEDIUM" | "HIGH";
+import type { OfferStatus, RiskLevel, Reason } from "@/types";
 
-export type DecisionReason = {
-  message: string;
-  impact: RiskLevel;
-};
+export type DecisionStatus = OfferStatus;
+export type { RiskLevel, Reason };
 
 export type DecisionResult = {
   status: DecisionStatus;
-  riskScore: number;
-  riskLevel: RiskLevel;
-  dti: number;
   installment: number;
   totalPayment: number;
-  reasons: DecisionReason[];
+  dti: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  reasons: Reason[];
 };

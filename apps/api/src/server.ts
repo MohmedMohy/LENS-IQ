@@ -1,5 +1,5 @@
 import "dotenv/config";
-import Fastify from "fastify";
+import Fastify, { type FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyCookie from "@fastify/cookie";
@@ -85,18 +85,17 @@ await fastify.register(cors, {
   credentials: true,
 });
 
+const cookieSecret = process.env.COOKIE_SECRET || crypto.randomBytes(32).toString("hex");
 await fastify.register(fastifyCookie, {
-  secret: process.env.COOKIE_SECRET || "default-cookie-secret-change-me",
+  secret: cookieSecret,
 });
 
-// Global rate limit
 await fastify.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
   allowList: ["127.0.0.1", "::1"],
 });
 
-// Login-specific rate limit via hook
 fastify.addHook("onRoute", (routeOptions) => {
   if (routeOptions.url === "/auth/login" && routeOptions.method === "POST") {
     const prev = routeOptions.config || {};
@@ -108,19 +107,37 @@ fastify.addHook("onRoute", (routeOptions) => {
       },
     };
   }
+  if (routeOptions.url === "/auth/register" && routeOptions.method === "POST") {
+    const prev = routeOptions.config || {};
+    routeOptions.config = {
+      ...prev,
+      rateLimit: {
+        max: 3,
+        timeWindow: "1 hour",
+      },
+    };
+  }
+  if (routeOptions.url?.startsWith("/public") && routeOptions.method === "POST") {
+    const prev = routeOptions.config || {};
+    routeOptions.config = {
+      ...prev,
+      rateLimit: {
+        max: 10,
+        timeWindow: "1 minute",
+      },
+    };
+  }
 });
 
-// Request ID middleware
 fastify.addHook("onRequest", async (request, reply) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   reply.headers({ "x-request-id": requestId });
 });
 
-fastify.setErrorHandler((error, _request, reply) => {
+fastify.setErrorHandler((error: FastifyError | Error, _request, reply) => {
   fastify.log.error(error);
-  const err = error as { statusCode?: number; message?: string };
-  const statusCode = err.statusCode || 500;
-  const message = statusCode === 500 ? "Internal server error" : (err.message || "Unknown error");
+  const statusCode = "statusCode" in error ? (error as FastifyError).statusCode ?? 500 : 500;
+  const message = statusCode === 500 ? "Internal server error" : (error.message || "Unknown error");
   return sendError(reply, message, statusCode);
 });
 
@@ -130,7 +147,7 @@ fastify.addHook("onSend", async (_request, reply, payload) => {
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.railway.app; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   });
   return payload;
 });
@@ -158,7 +175,6 @@ fastify.get("/health", async () => {
   }
 });
 
-/* ─── Serve frontend static files ─── */
 if (FRONTEND_DIST) {
   try {
     await fastify.register(fastifyStatic, {
@@ -171,7 +187,6 @@ if (FRONTEND_DIST) {
   }
 }
 
-/* ─── SPA fallback for non-API GET routes ─── */
 fastify.setNotFoundHandler((request, reply) => {
   if (request.method === "GET" && !API_PREFIXES.some(p => request.url.startsWith(p))) {
     return reply.sendFile("index.html");

@@ -46,11 +46,11 @@ export async function authRoutes(fastify: FastifyInstance) {
             const tenant = await registerTenant(name, email, password);
             await logAudit({ tenantId: tenant.id, action: "register", entity: "tenant", entityId: tenant.id });
             return sendSuccess(reply, tenant, 201);
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "Validation failed", 400, err.issues);
             }
-            return sendError(reply, err.message, 400);
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 
@@ -61,17 +61,17 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             setAuthCookies(reply, result.accessToken, result.refreshToken);
 
-            logAudit({ tenantId: result.tenant.id, userId: (result.tenant as any).userId, action: "login", entity: "tenant", entityId: result.tenant.id });
+            logAudit({ tenantId: result.tenant.id, userId: result.tenant.id, action: "login", entity: "tenant", entityId: result.tenant.id });
 
             return sendSuccess(reply, {
                 accessToken: result.accessToken,
                 tenant: result.tenant,
             });
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "Validation failed", 400, err.issues);
             }
-            return sendError(reply, err.message, 401);
+            return sendError(reply, (err as Error).message, 401);
         }
     });
 
@@ -89,9 +89,9 @@ export async function authRoutes(fastify: FastifyInstance) {
                 accessToken: result.accessToken,
                 tenant: result.tenant,
             });
-        } catch (err: any) {
+        } catch (err) {
             clearAuthCookies(reply);
-            return sendError(reply, err.message, 401);
+            return sendError(reply, (err as Error).message, 401);
         }
     });
 
@@ -101,14 +101,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             await logout(req.tenantId, refreshToken, req.userId);
             clearAuthCookies(reply);
             return sendSuccess(reply);
-        } catch (err: any) {
-            return sendError(reply, err.message, 400);
+        } catch (err) {
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 
     fastify.get("/me", { preHandler: authMiddleware }, async (req, reply) => {
         try {
-            let info;
+            let info: { id: number; name: string; email: string; role: string; max_users?: number };
             let maxUsers: number | undefined;
             let userCount: number | undefined;
 
@@ -132,8 +132,8 @@ export async function authRoutes(fastify: FastifyInstance) {
                 max_users: maxUsers,
                 user_count: userCount,
             });
-        } catch (err: any) {
-            return sendError(reply, err.message, 404);
+        } catch (err) {
+            return sendError(reply, (err as Error).message, 404);
         }
     });
 
@@ -150,11 +150,11 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             if (!result.rows[0]) throw new Error("Tenant not found");
             return sendSuccess(reply, result.rows[0]);
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "Validation failed", 400, err.issues);
             }
-            return sendError(reply, err.message, 400);
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 
@@ -163,8 +163,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             const tenantId = req.tenantId;
             const tenant = await getTenantById(tenantId);
             return sendSuccess(reply, tenant);
-        } catch (err: any) {
-            return sendError(reply, err.message, 404);
+        } catch (err) {
+            return sendError(reply, (err as Error).message, 404);
         }
     });
 
@@ -174,11 +174,11 @@ export async function authRoutes(fastify: FastifyInstance) {
             const { name } = updateProfileSchema.parse(req.body);
             const tenant = await updateTenantProfile(tenantId, name);
             return sendSuccess(reply, tenant);
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "Validation failed", 400, err.issues);
             }
-            return sendError(reply, err.message, 400);
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 
@@ -189,11 +189,11 @@ export async function authRoutes(fastify: FastifyInstance) {
             const result = await changeTenantPassword(tenantId, current_password, new_password);
             await logAudit({ tenantId, userId: req.userId, action: "change_password", entity: "tenant", entityId: tenantId });
             return sendSuccess(reply, result);
-        } catch (err: any) {
+        } catch (err) {
             if (err instanceof z.ZodError) {
                 return sendError(reply, "Validation failed", 400, err.issues);
             }
-            return sendError(reply, err.message, 400);
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 
@@ -203,8 +203,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             const tenant = await regenerateApiKey(tenantId);
             await logAudit({ tenantId, userId: req.userId, action: "regenerate_api_key", entity: "tenant", entityId: tenantId });
             return sendSuccess(reply, tenant);
-        } catch (err: any) {
-            return sendError(reply, err.message, 400);
+        } catch (err) {
+            return sendError(reply, (err as Error).message, 400);
         }
     });
 }

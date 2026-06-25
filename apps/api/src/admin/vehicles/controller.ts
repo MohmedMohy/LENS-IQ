@@ -1,5 +1,4 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-
 import {
     createVehicle,
     getVehicles,
@@ -7,13 +6,8 @@ import {
     updateVehicle,
     deleteVehicle,
 } from "./service.js";
-
-import type {
-    CreateVehicleDTO,
-    UpdateVehicleDTO,
-} from "./vehicles.schema.js";
-
-import { sendSuccess, sendError } from "../../shared/response.js";
+import type { CreateVehicleDTO, UpdateVehicleDTO } from "./vehicles.schema.js";
+import { handleResult, handleError } from "../../shared/response.js";
 import { logAudit } from "../../shared/audit.service.js";
 
 type IdParams = { id: string };
@@ -26,9 +20,9 @@ export async function createVehicleController(
         const tenantId = request.tenantId;
         const vehicle = await createVehicle(request.body, tenantId);
         logAudit({ tenantId, userId: request.userId, action: "create", entity: "vehicle", entityId: vehicle.id });
-        return sendSuccess(reply, vehicle, 201);
-    } catch (err: any) {
-        return sendError(reply, err.message ?? "Failed to create vehicle", 500);
+        return handleResult(reply, { data: vehicle, statusCode: 201 });
+    } catch (err) {
+        return handleResult(reply, handleError(err, "Failed to create vehicle"));
     }
 }
 
@@ -39,9 +33,9 @@ export async function getVehiclesController(
     try {
         const tenantId = request.tenantId;
         const vehicles = await getVehicles(tenantId);
-        return sendSuccess(reply, vehicles);
-    } catch (err: any) {
-        return sendError(reply, err.message ?? "Failed to fetch vehicles", 500);
+        return handleResult(reply, { data: vehicles });
+    } catch (err) {
+        return handleResult(reply, handleError(err, "Failed to fetch vehicles"));
     }
 }
 
@@ -52,10 +46,11 @@ export async function getVehicleByIdController(
     try {
         const tenantId = request.tenantId;
         const vehicle = await getVehicleById(Number(request.params.id), tenantId);
-        return sendSuccess(reply, vehicle);
-    } catch (err: any) {
-        const status = err.message === "Vehicle not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        return handleResult(reply, { data: vehicle });
+    } catch (err) {
+        const e = handleError(err, "Vehicle not found");
+        if (e.error === "Vehicle not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }
 
@@ -67,10 +62,11 @@ export async function updateVehicleController(
         const tenantId = request.tenantId;
         const vehicle = await updateVehicle(Number(request.params.id), request.body, tenantId);
         logAudit({ tenantId, userId: request.userId, action: "update", entity: "vehicle", entityId: Number(request.params.id) });
-        return sendSuccess(reply, vehicle);
-    } catch (err: any) {
-        const status = err.message === "Vehicle not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        return handleResult(reply, { data: vehicle });
+    } catch (err) {
+        const e = handleError(err, "Vehicle not found");
+        if (e.error === "Vehicle not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }
 
@@ -82,9 +78,10 @@ export async function deleteVehicleController(
         const tenantId = request.tenantId;
         await deleteVehicle(Number(request.params.id), tenantId);
         logAudit({ tenantId, userId: request.userId, action: "delete", entity: "vehicle", entityId: Number(request.params.id) });
-        return sendSuccess(reply, { id: Number(request.params.id) });
-    } catch (err: any) {
-        const status = err.message === "Vehicle not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        return handleResult(reply, { data: { id: Number(request.params.id) } });
+    } catch (err) {
+        const e = handleError(err, "Vehicle not found");
+        if (e.error === "Vehicle not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }

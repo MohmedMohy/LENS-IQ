@@ -1,8 +1,9 @@
 import { db } from "../../db/db.js";
 import { encrypt, decrypt } from "../../shared/crypto.service.js";
 import type { CreateCustomerDTO, UpdateCustomerDTO } from "./customers.schema.js";
+import type { CustomerRow } from "../../shared/types/database.js";
 
-function decryptCustomer(row: any) {
+function decryptCustomer(row: CustomerRow): CustomerRow {
     if (!row) return row;
     try {
         if (row.national_id) row.national_id = decrypt(row.national_id);
@@ -13,11 +14,11 @@ function decryptCustomer(row: any) {
     return row;
 }
 
-function decryptCustomers(rows: any[]) {
+function decryptCustomers(rows: CustomerRow[]): CustomerRow[] {
     return rows.map(decryptCustomer);
 }
 
-export async function createCustomer(data: CreateCustomerDTO, tenantId: number) {
+export async function createCustomer(data: CreateCustomerDTO, tenantId: number): Promise<CustomerRow> {
     const national_id = encrypt(data.national_id);
     const phone = encrypt(data.phone);
 
@@ -42,7 +43,7 @@ export async function createCustomer(data: CreateCustomerDTO, tenantId: number) 
     return decryptCustomer(result.rows[0]);
 }
 
-export async function getCustomers(tenantId: number) {
+export async function getCustomers(tenantId: number): Promise<CustomerRow[]> {
     const result = await db.query(
         `SELECT * FROM customers WHERE tenant_id = $1 ORDER BY id DESC`,
         [tenantId]
@@ -50,7 +51,7 @@ export async function getCustomers(tenantId: number) {
     return decryptCustomers(result.rows);
 }
 
-export async function getCustomerById(id: number, tenantId: number) {
+export async function getCustomerById(id: number, tenantId: number): Promise<CustomerRow> {
     const result = await db.query(
         `SELECT * FROM customers WHERE id = $1 AND tenant_id = $2`,
         [id, tenantId]
@@ -59,7 +60,7 @@ export async function getCustomerById(id: number, tenantId: number) {
     return decryptCustomer(result.rows[0]);
 }
 
-export async function updateCustomer(id: number, data: UpdateCustomerDTO, tenantId: number) {
+export async function updateCustomer(id: number, data: UpdateCustomerDTO, tenantId: number): Promise<CustomerRow> {
     const existing = await getCustomerById(id, tenantId);
 
     const national_id = data.national_id !== undefined ? encrypt(data.national_id) : encrypt(existing.national_id);
@@ -98,7 +99,7 @@ export async function updateCustomer(id: number, data: UpdateCustomerDTO, tenant
     return decryptCustomer(result.rows[0]);
 }
 
-export async function deleteCustomer(id: number, tenantId: number) {
+export async function deleteCustomer(id: number, tenantId: number): Promise<CustomerRow> {
     const result = await db.query(
         `DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING *`,
         [id, tenantId]

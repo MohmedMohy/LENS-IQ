@@ -1,9 +1,26 @@
-import type { Application } from "../shared/types/application.js";
 import type { ApplicationInput } from "../shared/types/applicationInput.js";
 
+interface CustomerInfo {
+  age?: number;
+  salary: number;
+  current_liabilities?: number;
+  owns_property?: boolean;
+  owns_car?: boolean;
+  club_membership?: string | null;
+  insurance_number?: string | null;
+  job_type?: string;
+  car_age?: number;
+  salary_transfer?: boolean;
+}
+
+interface ApplicationInfo {
+  id: number;
+  requested_down_payment: number;
+}
+
 export function mapApplicationToInput(
-    app: Application,
-    customer: any,
+    app: ApplicationInfo,
+    customer: CustomerInfo,
     vehiclePrice: number
 ): ApplicationInput {
     const currentYear = new Date().getFullYear();

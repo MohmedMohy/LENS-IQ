@@ -147,18 +147,20 @@ model RefreshToken {
 }
 
 model Bank {
-  id        Int      @id @default(autoincrement())
-  tenant_id Int
-  name      String
-  code      String
-  logo_url  String?
-  active    Boolean  @default(true)
+  id         Int      @id @default(autoincrement())
+  tenant_id  Int
+  name       String
+  code       String
+  logo_url   String?
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
 
   tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   programs Program[]
   offers   Offer[]
 
   @@index([tenant_id])
+  @@unique([tenant_id, code])
   @@map("banks")
 }
 
@@ -184,6 +186,7 @@ model Program {
   max_finance_amount      Float?
   admin_fees_percent      Float             @default(0)
   active                  Boolean           @default(true)
+  created_at              DateTime          @default(now())
 
   tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   bank   Bank   @relation(fields: [bank_id], references: [id])
@@ -191,6 +194,7 @@ model Program {
   offers Offer[]
 
   @@index([tenant_id])
+  @@index([tenant_id, active])
   @@index([bank_id])
   @@map("programs")
 }
@@ -216,9 +220,9 @@ model Customer {
   id                     Int        @id @default(autoincrement())
   tenant_id              Int
   name                   String
-  national_id            String     @default("")
-  phone                  String     @default("")
-  birth_date             String?
+  national_id            String
+  phone                  String
+  birth_date             String
   salary                 Float
   job_type               JobType    @default(private)
   current_liabilities    Float      @default(0)
@@ -239,6 +243,8 @@ model Customer {
   applications Application[]
 
   @@index([tenant_id])
+  @@index([tenant_id, name])
+  @@index([tenant_id, national_id])
   @@map("customers")
 }
 
@@ -250,13 +256,14 @@ model Vehicle {
   manufacturing_year Int
   condition          VehicleCondition @default(used)
   price              Float
-  category           VehicleCategory?
+  category           VehicleCategory
   created_at         DateTime         @default(now())
 
   tenant       Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   applications Application[]
 
   @@index([tenant_id])
+  @@index([tenant_id, brand, model])
   @@map("vehicles")
 }
 
@@ -279,6 +286,7 @@ model Application {
   offers   Offer[]
 
   @@index([tenant_id])
+  @@index([tenant_id, status])
   @@index([customer_id])
   @@index([vehicle_id])
   @@map("applications")
@@ -310,6 +318,7 @@ model Offer {
   bank        Bank        @relation(fields: [bank_id], references: [id])
 
   @@index([tenant_id])
+  @@index([tenant_id, status])
   @@index([application_id])
   @@index([program_id])
   @@index([bank_id])

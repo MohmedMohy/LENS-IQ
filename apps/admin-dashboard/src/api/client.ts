@@ -4,6 +4,7 @@ import type { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axio
 import { ENV } from "@/config/env";
 import { useAuthStore } from "@/store/auth.store";
 import { ApiError } from "@/lib/api-error";
+import type { Tenant } from "@/types/auth";
 
 export const apiClient = axios.create({
     baseURL: `${ENV.API_URL}`,
@@ -31,9 +32,6 @@ function processQueue(error: unknown) {
     pendingQueue = [];
 }
 
-// ======================
-// Request Interceptor — attach Bearer token
-// ======================
 apiClient.interceptors.request.use((config) => {
     const token = useAuthStore.getState().token;
     if (token) {
@@ -42,9 +40,6 @@ apiClient.interceptors.request.use((config) => {
     return config;
 });
 
-// ======================
-// Response Interceptor
-// ======================
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => {
         const body = response.data;
@@ -74,7 +69,6 @@ apiClient.interceptors.response.use(
                                 ? "Server error. Try again later."
                                 : error.message ?? "Something went wrong.");
 
-        // Try refresh token on 401 (except login/refresh)
         if (status === 401 && !isLoginRequest && !isRefreshRequest && !originalRequest._retry) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
@@ -89,9 +83,9 @@ apiClient.interceptors.response.use(
 
             try {
                 const refreshRes = await apiClient.post("/auth/refresh");
-                const data = refreshRes.data as { accessToken?: string; tenant?: unknown };
+                const data = refreshRes.data as { accessToken?: string; tenant?: Record<string, unknown> };
                 if (data?.accessToken && data?.tenant) {
-                    useAuthStore.getState().setSession(data.tenant as any, data.accessToken);
+                    useAuthStore.getState().setSession(data.tenant as unknown as Tenant, data.accessToken);
                 }
                 processQueue(null);
                 return apiClient(originalRequest);

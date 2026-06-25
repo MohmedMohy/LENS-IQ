@@ -1,11 +1,28 @@
 import { db } from "../db/db.js";
 import type { ApplicationInput } from "../shared/types/applicationInput.js";
+import type { ApplicationRow } from "../shared/types/database.js";
+
+interface ApplicationQueryRow {
+  application_id: number;
+  requested_down_payment: number;
+  birth_date: string;
+  salary: number;
+  current_liabilities: number;
+  owns_property: boolean;
+  owns_car: boolean;
+  club_membership: string | null;
+  insurance_number: string | null;
+  job_type: string;
+  salary_transfer: boolean;
+  price: number;
+  manufacturing_year: number;
+}
 
 export async function getApplicationById(
   id: number,
   tenantId: number
 ): Promise<ApplicationInput> {
-  const result = await db.query(
+  const result = await db.query<ApplicationQueryRow>(
     `SELECT 
       a.id AS application_id,
       a.requested_down_payment,

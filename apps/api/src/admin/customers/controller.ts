@@ -1,5 +1,4 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-
 import {
     createCustomer,
     getCustomers,
@@ -7,13 +6,8 @@ import {
     updateCustomer,
     deleteCustomer,
 } from "./service.js";
-
-import type {
-    CreateCustomerDTO,
-    UpdateCustomerDTO,
-} from "./customers.schema.js";
-
-import { sendSuccess, sendError } from "../../shared/response.js";
+import type { CreateCustomerDTO, UpdateCustomerDTO } from "./customers.schema.js";
+import { handleResult, handleError } from "../../shared/response.js";
 import { logAudit } from "../../shared/audit.service.js";
 
 type IdParams = { id: string };
@@ -25,10 +19,10 @@ export async function createCustomerController(
     try {
         const tenantId = request.tenantId;
         const customer = await createCustomer(request.body, tenantId);
-        await logAudit({ tenantId, userId: request.userId, action: "create", entity: "customer", entityId: customer.id });
-        return sendSuccess(reply, customer, 201);
-    } catch (err: any) {
-        return sendError(reply, err.message ?? "Failed to create customer", 500);
+        logAudit({ tenantId, userId: request.userId, action: "create", entity: "customer", entityId: customer.id });
+        return handleResult(reply, { data: customer, statusCode: 201 });
+    } catch (err) {
+        return handleResult(reply, handleError(err, "Failed to create customer"));
     }
 }
 
@@ -39,9 +33,9 @@ export async function getCustomersController(
     try {
         const tenantId = request.tenantId;
         const customers = await getCustomers(tenantId);
-        return sendSuccess(reply, customers);
-    } catch (err: any) {
-        return sendError(reply, err.message ?? "Failed to fetch customers", 500);
+        return handleResult(reply, { data: customers });
+    } catch (err) {
+        return handleResult(reply, handleError(err, "Failed to fetch customers"));
     }
 }
 
@@ -52,10 +46,11 @@ export async function getCustomerByIdController(
     try {
         const tenantId = request.tenantId;
         const customer = await getCustomerById(Number(request.params.id), tenantId);
-        return sendSuccess(reply, customer);
-    } catch (err: any) {
-        const status = err.message === "Customer not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        return handleResult(reply, { data: customer });
+    } catch (err) {
+        const e = handleError(err, "Customer not found");
+        if (e.error === "Customer not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }
 
@@ -66,11 +61,12 @@ export async function updateCustomerController(
     try {
         const tenantId = request.tenantId;
         const updated = await updateCustomer(Number(request.params.id), request.body, tenantId);
-        await logAudit({ tenantId, userId: request.userId, action: "update", entity: "customer", entityId: Number(request.params.id) });
-        return sendSuccess(reply, updated);
-    } catch (err: any) {
-        const status = err.message === "Customer not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        logAudit({ tenantId, userId: request.userId, action: "update", entity: "customer", entityId: Number(request.params.id) });
+        return handleResult(reply, { data: updated });
+    } catch (err) {
+        const e = handleError(err, "Customer not found");
+        if (e.error === "Customer not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }
 
@@ -81,10 +77,11 @@ export async function deleteCustomerController(
     try {
         const tenantId = request.tenantId;
         await deleteCustomer(Number(request.params.id), tenantId);
-        await logAudit({ tenantId, userId: request.userId, action: "delete", entity: "customer", entityId: Number(request.params.id) });
-        return sendSuccess(reply, { id: Number(request.params.id) });
-    } catch (err: any) {
-        const status = err.message === "Customer not found" ? 404 : 500;
-        return sendError(reply, err.message, status);
+        logAudit({ tenantId, userId: request.userId, action: "delete", entity: "customer", entityId: Number(request.params.id) });
+        return handleResult(reply, { data: { id: Number(request.params.id) } });
+    } catch (err) {
+        const e = handleError(err, "Customer not found");
+        if (e.error === "Customer not found") e.statusCode = 404;
+        return handleResult(reply, e);
     }
 }

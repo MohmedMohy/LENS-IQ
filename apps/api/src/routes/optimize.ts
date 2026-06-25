@@ -173,12 +173,12 @@ export async function optimizeRoutes(fastify: FastifyInstance) {
                         dti: body.salary > 0 ? Math.round((body.current_liabilities / body.salary) * 100) : 0,
                     },
                 });
-            } catch (err: any) {
+            } catch (err) {
                 if (err instanceof z.ZodError) {
                     return sendError(reply, "Validation failed", 400, err.issues);
                 }
                 fastify.log.error(err);
-                return sendError(reply, err?.message ?? "Internal Server Error", 500);
+                return sendError(reply, (err as Error)?.message ?? "Internal Server Error", 500);
             }
         }
     );

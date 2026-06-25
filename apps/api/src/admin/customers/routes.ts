@@ -1,8 +1,6 @@
 import type { FastifyInstance } from "fastify";
-
 import { authMiddleware } from "../../auth/auth.middleware.js";
 import { rbacMiddleware } from "../../auth/rbac.middleware.js";
-
 import {
     createCustomerController,
     getCustomersController,
@@ -10,17 +8,9 @@ import {
     updateCustomerController,
     deleteCustomerController,
 } from "./controller.js";
+import type { CreateCustomerDTO, UpdateCustomerDTO } from "./customers.schema.js";
 
-import {
-    createCustomerSchema,
-    updateCustomerSchema,
-    type CreateCustomerDTO,
-    type UpdateCustomerDTO,
-} from "./customers.schema.js";
-
-type IdParams = {
-    id: string;
-};
+type IdParams = { id: string };
 
 const requireWrite = [authMiddleware, rbacMiddleware("ADMIN", "MANAGER")];
 const requireRead = [authMiddleware, rbacMiddleware("ADMIN", "MANAGER", "SALES_AGENT")];

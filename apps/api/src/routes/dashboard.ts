@@ -31,8 +31,6 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
                 [tenantId]
             );
 
-            const userStatsResult = null;
-
             const appsResult = await db.query(
                 `SELECT COUNT(*)::int as total,
                         COUNT(*) FILTER (WHERE status = 'APPROVED')::int as approved,
@@ -87,8 +85,8 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
             };
 
             return sendSuccess(reply, base);
-        } catch (err: any) {
-            return sendError(reply, err.message || "Failed to fetch dashboard stats", 500);
+        } catch (err) {
+            return sendError(reply, (err as Error).message || "Failed to fetch dashboard stats", 500);
         }
     });
 }
