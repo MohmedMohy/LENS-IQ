@@ -144,6 +144,24 @@ fastify.addHook("onRoute", (routeOptions) => {
 });
 
 fastify.addHook("onRequest", async (request, reply) => {
+  const url = request.url;
+  if (FRONTEND_DIST && url.startsWith("/assets/")) {
+    const relativePath = url.replace("/assets/", "").split("?")[0];
+    const filePath = path.join(FRONTEND_DIST, relativePath);
+    if (filePath.startsWith(FRONTEND_DIST)) {
+      const cached = assetCache.get(relativePath);
+      if (cached) {
+        return reply.type(cached.type).send(cached.data);
+      }
+      try {
+        const data = readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        const type = MIME_TYPES[ext] || "application/octet-stream";
+        assetCache.set(relativePath, { data, type });
+        return reply.type(type).send(data);
+      } catch {}
+    }
+  }
   const requestId = crypto.randomUUID().slice(0, 8);
   reply.headers({ "x-request-id": requestId });
 });
@@ -218,30 +236,6 @@ const MIME_TYPES: Record<string, string> = {
 
 let indexContent: string | null = null;
 const assetCache = new Map<string, { data: Buffer; type: string }>();
-
-if (FRONTEND_DIST) {
-  fastify.get("/assets/*", async (request, reply) => {
-    const urlPath = request.url.split("?")[0];
-    const relativePath = urlPath.replace("/assets/", "");
-    const filePath = path.join(FRONTEND_DIST!, relativePath);
-    if (!filePath.startsWith(FRONTEND_DIST!)) {
-      return reply.callNotFound();
-    }
-    const cached = assetCache.get(relativePath);
-    if (cached) {
-      return reply.type(cached.type).send(cached.data);
-    }
-    try {
-      const data = readFileSync(filePath);
-      const ext = path.extname(filePath).toLowerCase();
-      const type = MIME_TYPES[ext] || "application/octet-stream";
-      assetCache.set(relativePath, { data, type });
-      return reply.type(type).send(data);
-    } catch {
-      return reply.callNotFound();
-    }
-  });
-}
 
 const INDEX_HTML = FRONTEND_DIST ? path.join(FRONTEND_DIST, "index.html") : null;
 const FAVICON_PATH = FRONTEND_DIST && existsSync(path.join(FRONTEND_DIST, "favicon.svg"))
