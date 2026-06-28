@@ -57,7 +57,7 @@ function findFrontendDist(): string | null {
   return null;
 }
 const FRONTEND_DIST = findFrontendDist();
-const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard", "/banks", "/applications", "/engine", "/assets", "/application"];
+const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard", "/banks", "/applications", "/engine", "/application"];
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -166,7 +166,7 @@ fastify.addHook("onSend", async (request, reply, payload) => {
     "X-Frame-Options": isWidgetRequest ? "ALLOW-FROM " + (WIDGET_ORIGINS[0] || "") : "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors ${frameAncestors}; base-uri 'self'`,
+    "Content-Security-Policy": `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https:; font-src 'self' data:; object-src 'none'; frame-ancestors ${frameAncestors}; base-uri 'self'`,
   });
   return payload;
 });
@@ -204,7 +204,6 @@ if (FRONTEND_DIST) {
     await fastify.register(fastifyStatic, {
       root: FRONTEND_DIST,
       prefix: "/assets/",
-      wildcard: false,
       decorateReply: false,
     });
   } catch {
@@ -213,7 +212,15 @@ if (FRONTEND_DIST) {
 }
 
 const INDEX_HTML = FRONTEND_DIST ? path.join(FRONTEND_DIST, "index.html") : null;
+const FAVICON_PATH = FRONTEND_DIST && existsSync(path.join(FRONTEND_DIST, "favicon.svg"))
+  ? path.join(FRONTEND_DIST, "favicon.svg") : null;
 let indexContent: string | null = null;
+
+if (FAVICON_PATH) {
+  fastify.get("/favicon.svg", async (_request, reply) => {
+    return reply.type("image/svg+xml").send(readFileSync(FAVICON_PATH));
+  });
+}
 
 fastify.setNotFoundHandler((request, reply) => {
   if (request.method === "GET" && !API_PREFIXES.some(p => request.url.startsWith(p))) {
