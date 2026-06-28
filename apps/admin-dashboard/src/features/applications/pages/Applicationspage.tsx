@@ -25,7 +25,7 @@ import type { Application, ApplicationStatus, Customer, Vehicle, CreateApplicati
 const applicationSchema = z.object({
     customer_id: z.coerce.number().int().positive("Select a customer"),
     vehicle_id: z.coerce.number().int().positive("Select a vehicle"),
-    requested_down_payment: z.coerce.number().positive("Must be greater than 0"),
+    requested_down_payment: z.coerce.number().min(0),
     requested_months: z.coerce.number().int().min(1).max(120),
     payment_method: z.enum(["salary_transfer", "bank_account", "cash_proof"]).default("bank_account"),
     notes: z.string().optional(),

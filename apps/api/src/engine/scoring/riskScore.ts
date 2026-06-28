@@ -1,28 +1,21 @@
 import type { RiskLevel, EmploymentType } from "../../shared/types/scoring.js";
 
-const DTI_THRESHOLDS = {
-    HIGH: 60,
-    MEDIUM_HIGH: 50,
-    MEDIUM: 40,
-    LOW: 30,
-} as const;
+const BASE_SCORE = 20;
 
-const SALARY_THRESHOLDS = {
-    LOW: 4000,
-    MEDIUM: 7000,
-} as const;
-
-const AGE_THRESHOLDS = {
-    HIGH: 60,
-    MEDIUM: 50,
-} as const;
+const SALARY_ADJUSTMENTS: Array<{ min: number; adj: number; label: string }> = [
+    { min: 30000, adj: -15, label: 'Salary >= 30,000' },
+    { min: 15000, adj: -5, label: 'Salary >= 15,000' },
+    { min: 8000, adj: 0, label: 'Salary >= 8,000' },
+    { min: 5000, adj: 10, label: 'Salary >= 5,000' },
+    { min: 0, adj: 20, label: 'Salary < 5,000' },
+];
 
 const EMPLOYMENT_ADJUSTMENTS: Record<EmploymentType, number> = {
     government: -10,
     listed_private: -5,
     unlisted_private: 0,
     self_employed: 10,
-    retired: -5,
+    retired: 5,
 };
 
 const ISCORE_ADJUSTMENTS: Array<{ min: number; max: number; adj: number; label: string }> = [
@@ -46,37 +39,27 @@ export function evaluateRisk(
     iScore?: number
 ): { score: number; level: RiskLevel; riskFactors: string[] } {
 
-    let score = 0;
+    let score = BASE_SCORE;
     const riskFactors: string[] = [];
 
-    if (dti > DTI_THRESHOLDS.HIGH) {
-        score += 50;
-        riskFactors.push('DTI exceeds 60%');
-    } else if (dti > DTI_THRESHOLDS.MEDIUM_HIGH) {
-        score += 35;
-        riskFactors.push('DTI between 50-60%');
-    } else if (dti > DTI_THRESHOLDS.MEDIUM) {
-        score += 20;
-        riskFactors.push('DTI between 40-50%');
-    } else if (dti > DTI_THRESHOLDS.LOW) {
-        score += 10;
-        riskFactors.push('DTI between 30-40%');
+    const dtiPenalty = Math.min(100, Math.max(0, dti)) * 0.3;
+    score += dtiPenalty;
+    if (dtiPenalty > 0) {
+        riskFactors.push(`DTI penalty: +${dtiPenalty.toFixed(1)} pts`);
     }
 
-    if (salary < SALARY_THRESHOLDS.LOW) {
-        score += 25;
-        riskFactors.push('Low salary bracket');
-    } else if (salary < SALARY_THRESHOLDS.MEDIUM) {
-        score += 10;
-        riskFactors.push('Medium salary bracket');
+    const salaryAdj = SALARY_ADJUSTMENTS.find(s => salary >= s.min);
+    if (salaryAdj) {
+        score += salaryAdj.adj;
+        riskFactors.push(`${salaryAdj.label}: ${salaryAdj.adj >= 0 ? '+' : ''}${salaryAdj.adj} pts`);
     }
 
-    if (age > AGE_THRESHOLDS.HIGH) {
-        score += 30;
-        riskFactors.push('Age exceeds 60');
-    } else if (age > AGE_THRESHOLDS.MEDIUM) {
-        score += 15;
-        riskFactors.push('Age exceeds 50');
+    if (age >= 25 && age <= 40) {
+        score -= 5;
+        riskFactors.push('Age 25-40: -5 pts');
+    } else if (age < 25 || age > 50) {
+        score += 5;
+        riskFactors.push(`Age ${age < 25 ? '<25' : '>50'}: +5 pts`);
     }
 
     if (employmentType) {
@@ -106,7 +89,7 @@ export function evaluateRisk(
         }
     }
 
-    const finalScore = Math.min(Math.max(score, 0), 100);
+    const finalScore = Math.min(Math.max(Math.round(score), 0), 100);
 
     let level: RiskLevel;
     if (iScoreForcedHigh || finalScore >= RISK_LEVEL_THRESHOLDS.HIGH) {

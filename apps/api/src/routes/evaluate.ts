@@ -47,6 +47,7 @@ export async function evaluateRoutes(fastify: FastifyInstance) {
                     club_membership: null,
                     insurance_number: null,
                     requestedDownPayment: Number(row.requested_down_payment),
+                    requestedMonths: Number(row.requested_months),
                     job_type: row.job_type,
                     car_age: currentYear - Number(row.manufacturing_year),
                     salary_transfer: Boolean(row.salary_transfer),

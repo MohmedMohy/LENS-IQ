@@ -19,12 +19,14 @@ function mapJobType(jobType?: string): EmploymentType | undefined {
         government: 'government',
         gov: 'government',
         public: 'government',
+        corporate: 'listed_private',
         private: 'unlisted_private',
         listed: 'listed_private',
         listed_private: 'listed_private',
         self_employed: 'self_employed',
         self: 'self_employed',
         freelance: 'self_employed',
+        freelancer: 'self_employed',
         retired: 'retired',
     };
     return map[jobType.toLowerCase()] ?? undefined;
@@ -36,14 +38,28 @@ function computeApprovalProbability(score: {
     dti: number;
 }, status: EvaluationStatus): number {
     if (status === "REJECTED") {
-        const dtiPenalty = Math.min(100, score.dti);
-        const riskPenalty = score.riskScore;
-        return Math.round(Math.max(5, 50 - (dtiPenalty * 0.3 + riskPenalty * 0.4)));
+        const dtiPenalty = Math.min(100, Math.max(0, score.dti));
+        const riskPenalty = Math.min(100, Math.max(0, score.riskScore));
+        let prob = Math.round(Math.max(5, 50 - (dtiPenalty * 0.3 + riskPenalty * 0.4)));
+        if (prob >= 50) prob = 49;
+        return prob;
     }
-    const base = score.affordabilityScore * 0.5;
-    const riskBonus = Math.max(0, 100 - score.riskScore) * 0.3;
-    const dtiBonus = Math.max(0, 100 - score.dti) * 0.2;
-    return Math.round(Math.min(99, base + riskBonus + dtiBonus));
+
+    if (status === "CONDITIONAL") {
+        const dtiPenalty = Math.min(100, Math.max(0, score.dti));
+        const riskPenalty = Math.min(100, Math.max(0, score.riskScore));
+        let prob = Math.round(Math.max(30, Math.min(65, 50 - (dtiPenalty * 0.15 + riskPenalty * 0.2))));
+        if (prob === 50) prob = 49;
+        return prob;
+    }
+
+    const base = Math.min(100, Math.max(0, score.affordabilityScore)) * 0.5;
+    const riskBonus = Math.max(0, 100 - Math.min(100, Math.max(0, score.riskScore))) * 0.3;
+    const dtiBonus = Math.max(0, 100 - Math.min(100, Math.max(0, score.dti))) * 0.2;
+    let prob = Math.round(Math.min(99, base + riskBonus + dtiBonus));
+    if (prob < 50) prob = 50;
+    if (prob === 50) prob = 51;
+    return prob;
 }
 
 export function generateOffer(
@@ -55,37 +71,8 @@ export function generateOffer(
 
     const employmentType = mapJobType(input.job_type);
     const maxAllowedDTI = employmentType === 'government' ? MAX_DTI_GOVERNMENT : MAX_DTI_STANDARD;
-
-    if (evaluation.status === "REJECTED") {
-        return {
-            programId: program.id,
-            bankId: program.bankId,
-            programName: program.name,
-            financeAmount: 0,
-            downPayment: 0,
-            status: "REJECTED",
-            installment: 0,
-            totalPayment: 0,
-            interestRate: program.interestRate,
-            months: overrides?.overrideMonths ?? program.maxMonths,
-            dti: 0,
-            riskScore: 100,
-            riskLevel: "HIGH",
-            affordabilityScore: 0,
-            approvalProbability: computeApprovalProbability(
-                { riskScore: 100, affordabilityScore: 0, dti: 0 },
-                "REJECTED"
-            ),
-            reasons: evaluation.reasons,
-            effectiveAnnualRate: 0,
-            tenor: overrides?.overrideMonths ?? program.maxMonths,
-            downPaymentPct: overrides?.overrideDownPaymentPercent ?? program.minDownPaymentPercent,
-            downPaymentAmount: 0,
-            loanAmount: 0,
-            LTV: 0,
-            calculationMethod: program.calculationMethod,
-        };
-    }
+    const bankName = (program as any).bankName ?? undefined;
+    const programName = program.name;
 
     const finalMonths = Math.max(1,
         (overrides?.overrideMonths ?? program.maxMonths) + (evaluation.maxMonthsModifier || 0)
@@ -113,7 +100,8 @@ export function generateOffer(
         return {
             programId: program.id,
             bankId: program.bankId,
-            programName: program.name,
+            bankName,
+            programName,
             financeAmount: 0,
             downPayment: actualDownPayment,
             status: "APPROVED",
@@ -134,6 +122,7 @@ export function generateOffer(
             loanAmount: 0,
             LTV: 0,
             calculationMethod: program.calculationMethod,
+            suggestedAlternatives: [],
         };
     }
 
@@ -153,6 +142,8 @@ export function generateOffer(
         calcMethod
     );
 
+    const carAge = input.car_age ?? (input.carYear ? new Date().getFullYear() - input.carYear : 0);
+
     const finalScore = analyze({
         age: input.age,
         salary: input.salary,
@@ -160,22 +151,44 @@ export function generateOffer(
         current_liabilities: input.current_liabilities,
         employmentType,
         iScore: input.iScore,
+        riskScore: evaluation.riskScore,
+        salaryTransfer: input.salary_transfer,
+        vehicleCondition: input.vehicleCondition,
+        carAge,
     });
 
-    let finalStatus: EvaluationStatus =
-        finalScore.riskLevel === "HIGH"
-            ? "REJECTED"
-            : evaluation.status;
+    let finalStatus: EvaluationStatus;
+    if (evaluation.status === "REJECTED") {
+        finalStatus = "REJECTED";
+    } else {
+        finalStatus =
+            finalScore.riskLevel === "HIGH"
+                ? "REJECTED"
+                : evaluation.status;
+    }
 
     const finalReasons = [...evaluation.reasons];
 
     if (finalScore.dti > maxAllowedDTI) {
         finalStatus = "REJECTED";
-        finalReasons.push({
-            type: "RISK",
-            message: `Final DTI (${finalScore.dti}%) exceeds max limit (${maxAllowedDTI}%)`,
-            impact: "HIGH",
-        });
+        if (!finalReasons.some(r => r.message.includes("DTI"))) {
+            finalReasons.push({
+                type: "RISK",
+                message: `Final DTI (${finalScore.dti}%) exceeds max limit (${maxAllowedDTI}%)`,
+                impact: "HIGH",
+            });
+        }
+    }
+
+    if (finalScore.dti > 60) {
+        finalStatus = "REJECTED";
+        if (!finalReasons.some(r => r.message.includes("ceiling") || r.message.includes("60%"))) {
+            finalReasons.push({
+                type: "RISK",
+                message: `DTI (${finalScore.dti}%) exceeds hard ceiling of 60%`,
+                impact: "HIGH",
+            });
+        }
     }
 
     const approvalProbability = computeApprovalProbability(finalScore, finalStatus);
@@ -185,7 +198,8 @@ export function generateOffer(
     return {
         programId: program.id,
         bankId: program.bankId,
-        programName: program.name,
+        bankName,
+        programName,
         financeAmount: loanAmount,
         downPayment: actualDownPayment,
         status: finalStatus,
@@ -206,5 +220,6 @@ export function generateOffer(
         loanAmount,
         LTV,
         calculationMethod: calcMethod,
+        suggestedAlternatives: [],
     };
 }

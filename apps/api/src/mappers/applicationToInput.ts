@@ -16,6 +16,7 @@ interface CustomerInfo {
 interface ApplicationInfo {
   id: number;
   requested_down_payment: number;
+  requested_months: number;
 }
 
 export function mapApplicationToInput(
@@ -36,6 +37,7 @@ export function mapApplicationToInput(
         club_membership: customer.club_membership ?? null,
         insurance_number: customer.insurance_number ?? null,
         requestedDownPayment: app.requested_down_payment,
+        requestedMonths: app.requested_months,
         job_type: customer.job_type ?? undefined,
         car_age: customer.car_age ?? 0,
         salary_transfer: customer.salary_transfer ?? false,

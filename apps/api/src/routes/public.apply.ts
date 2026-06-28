@@ -11,7 +11,7 @@ const applySchema = z.object({
     dealer_code: z.string().min(1),
     customer: createCustomerSchema,
     vehicle_id: z.number().int().positive(),
-    requested_down_payment: z.number().positive(),
+    requested_down_payment: z.number().min(0),
     requested_months: z.number().int().positive(),
     payment_method: z.enum(["salary_transfer", "bank_account", "cash_proof"]).default("bank_account"),
     notes: z.string().optional(),

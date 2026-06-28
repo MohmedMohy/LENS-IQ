@@ -12,7 +12,7 @@ import { logAudit } from "../../shared/audit.service.js";
 const createApplicationSchema = z.object({
     customer_id: z.number().int().positive(),
     vehicle_id: z.number().int().positive(),
-    requested_down_payment: z.number().positive(),
+    requested_down_payment: z.number().min(0),
     requested_months: z.number().int().positive(),
     payment_method: z.enum(["salary_transfer", "bank_account", "cash_proof"]).optional(),
     notes: z.string().optional(),

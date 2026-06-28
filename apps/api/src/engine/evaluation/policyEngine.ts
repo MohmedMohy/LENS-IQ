@@ -2,28 +2,16 @@ import type { EvaluationContext } from "../types/context.js";
 import type { Decision } from "../../shared/types/decision.js";
 import { evaluateRule } from "../rules/ruleEvaluator.js";
 
-/**
- * =========================
- * Policy Engine (Rule Layer)
- * =========================
- * - Evaluates business rules only
- * - No final decision responsibility
- * - Returns only signal or null
- */
 export function runPolicyEngine(
     ctx: EvaluationContext
 ): Decision | null {
 
-    // =========================
-    // 1. RULE EVALUATION LOOP
-    // =========================
+    let hasConditionalSignal = false;
+
     for (const rule of ctx.rules) {
 
         const ruleMet = evaluateRule(rule, ctx.input);
 
-        // =========================
-        // 2. REJECT RULE
-        // =========================
         if (ruleMet && rule.action === "REJECT") {
             return {
                 type: "REJECT",
@@ -35,9 +23,6 @@ export function runPolicyEngine(
             };
         }
 
-        // =========================
-        // 3. REQUIRED RULE FAILED
-        // =========================
         if (!ruleMet && rule.action === "REQUIRED") {
             return {
                 type: "REJECT",
@@ -49,9 +34,10 @@ export function runPolicyEngine(
             };
         }
 
-        // =========================
-        // 4. WARN ONLY (NO STOP)
-        // =========================
+        if (ruleMet && rule.action === "REQUIRED") {
+            hasConditionalSignal = true;
+        }
+
         if (ruleMet && rule.action === "WARN") {
             ctx.reasons.push({
                 type: "RULE",
@@ -61,8 +47,16 @@ export function runPolicyEngine(
         }
     }
 
-    // =========================
-    // 5. NO BLOCKING RULES
-    // =========================
+    if (hasConditionalSignal) {
+        return {
+            type: "CONDITIONAL",
+            reason: {
+                type: "RULE",
+                message: "Met required conditions — subject to review",
+                impact: "MEDIUM",
+            },
+        };
+    }
+
     return null;
 }

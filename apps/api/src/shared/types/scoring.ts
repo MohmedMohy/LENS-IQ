@@ -7,6 +7,10 @@ export type ScoringInput = {
     current_liabilities: number;
     employmentType?: EmploymentType;
     iScore?: number;
+    riskScore?: number;
+    salaryTransfer?: boolean;
+    vehicleCondition?: string;
+    carAge?: number;
 };
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
 

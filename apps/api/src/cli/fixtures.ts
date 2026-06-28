@@ -11,6 +11,7 @@ export const testInput: ApplicationInput = {
     club_membership: "premium",
     insurance_number: "123456789",
     requestedDownPayment: 100000,
+    requestedMonths: 36,
     job_type: "private",
     car_age: 3,
     salary_transfer: true,

@@ -552,7 +552,7 @@ export default function ApplyPage() {
         if (step === 3) return customer.salary > 0;
         if (step === 4)
             return (
-                appForm.requested_down_payment > 0 &&
+                appForm.requested_down_payment >= 0 &&
                 appForm.requested_months > 0
             );
         return false;

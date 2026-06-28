@@ -20,94 +20,61 @@ const DEFAULT_WEIGHTS: ScoreWeights = {
   customerMatch: 0.10,
 };
 
-function scoreFinanceCostByAPR(apr: number, minAPR: number, maxAPR: number): number {
-  if (maxAPR <= minAPR) return 100;
-  return clamp(100 * (1 - (apr - minAPR) / (maxAPR - minAPR)), 0, 100);
+function scoreFinanceCostByInstallment(installment: number, maxInstallment: number): number {
+  if (maxInstallment <= 0) return 100;
+  return clamp(100 - (installment / maxInstallment * 100), 0, 100);
 }
 
-function scoreFinancialFitness(dti: number): number {
-  if (dti <= 20) return 100;
-  if (dti <= 30) return 90;
-  if (dti <= 40) return 70;
-  if (dti <= 50) return 40;
-  if (dti <= 60) return 10;
-  return 0;
+function scoreCustomerMatchTenor(tenor: number, requestedMonths: number): number {
+  const diff = Math.abs(tenor - requestedMonths);
+  return diff <= 12 ? 100 : 50;
 }
 
-function scoreDownPayment(downPayment: number, price: number): number {
-  if (price <= 0) return 50;
-  const pct = (downPayment / price) * 100;
-  if (pct >= 50) return 100;
-  if (pct >= 40) return 90;
-  if (pct >= 35) return 75;
-  if (pct >= 30) return 60;
-  if (pct >= 25) return 40;
-  if (pct >= 20) return 20;
-  return 0;
-}
-
-function scoreCustomerMatch(o: Offer): number {
-  let score = 50;
-  if (o.dti <= 30) score += 25;
-  else if (o.dti <= 45) score += 10;
-  else score -= 15;
-  if (o.affordabilityScore >= 70) score += 15;
-  else if (o.affordabilityScore >= 50) score += 5;
-  else score -= 10;
-  if (o.riskLevel === "LOW") score += 10;
-  else if (o.riskLevel === "HIGH") score -= 20;
-  return clamp(score, 0, 100);
-}
-
-function computeMinMaxAPR(offers: Offer[]): { minAPR: number; maxAPR: number } {
-  let minAPR = Infinity;
-  let maxAPR = -Infinity;
+function computeMaxInstallment(offers: Offer[]): number {
+  let max = 0;
   for (const o of offers) {
-    const apr = o.effectiveAnnualRate ?? o.interestRate;
-    if (apr < minAPR) minAPR = apr;
-    if (apr > maxAPR) maxAPR = apr;
+    if (o.installment > max) max = o.installment;
   }
-  if (!isFinite(minAPR)) minAPR = 0;
-  if (!isFinite(maxAPR)) maxAPR = 0;
-  return { minAPR, maxAPR };
+  return max;
 }
 
 export function calculateProgramScore(
   o: Offer,
   weights?: Partial<ScoreWeights>,
-  contextMinMax?: { minAPR: number; maxAPR: number }
+  contextMaxInstallment?: number,
+  requestedMonths?: number
 ): number {
   const w = { ...DEFAULT_WEIGHTS, ...weights };
 
-  const { minAPR, maxAPR } = contextMinMax ?? { minAPR: 0, maxAPR: 0 };
+  const maxInstallment = contextMaxInstallment ?? 0;
+  const costScore = scoreFinanceCostByInstallment(o.installment, maxInstallment);
 
-  const apr = o.effectiveAnnualRate ?? o.interestRate;
-  const financeCost = scoreFinanceCostByAPR(apr, minAPR, maxAPR);
+  const fitnessScore = clamp(o.affordabilityScore, 0, 100);
 
-  const financialFitness = scoreFinancialFitness(o.dti);
+  const probabilityScore = clamp(o.approvalProbability, 0, 100);
 
-  const approval = clamp(o.approvalProbability, 0, 100);
+  const downPaymentPct = o.downPaymentPct ?? 0;
+  const dpScore = clamp(100 - downPaymentPct * 2, 0, 100);
 
-  const downPayment = scoreDownPayment(o.downPayment, o.financeAmount > 0 ? o.financeAmount + o.downPayment : 1);
-
-  const match = scoreCustomerMatch(o);
+  const tenor = o.tenor ?? o.months;
+  const matchScore = requestedMonths ? scoreCustomerMatchTenor(tenor, requestedMonths) : 50;
 
   return (
-    financeCost * w.financingCost +
-    financialFitness * w.financialFitness +
-    approval * w.approvalProbability +
-    downPayment * w.downPaymentImpact +
-    match * w.customerMatch
+    costScore * w.financingCost +
+    fitnessScore * w.financialFitness +
+    probabilityScore * w.approvalProbability +
+    dpScore * w.downPaymentImpact +
+    matchScore * w.customerMatch
   );
 }
 
-export function rankOffers(offers: Offer[]): Offer[] {
-  const { minAPR, maxAPR } = computeMinMaxAPR(offers);
+export function rankOffers(offers: Offer[], requestedMonths?: number): Offer[] {
+  const maxInstallment = computeMaxInstallment(offers);
 
   return [...offers]
     .map((o) => ({
       ...o,
-      programScore: calculateProgramScore(o, undefined, { minAPR, maxAPR }),
+      programScore: calculateProgramScore(o, undefined, maxInstallment, requestedMonths),
     }))
     .sort((a, b) => (b.programScore ?? 0) - (a.programScore ?? 0));
 }

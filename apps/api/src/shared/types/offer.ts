@@ -26,6 +26,7 @@ export type Offer = {
   loanAmount?: number;
   LTV?: number;
   calculationMethod?: string;
+  suggestedAlternatives?: Offer[];
 };
 
 export type OptimizationSuggestion = {

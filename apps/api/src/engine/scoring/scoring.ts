@@ -22,7 +22,13 @@ export function analyze(input: ScoringInput): ScoreResult {
         input.iScore
     );
 
-    const affordabilityScore = calculateAffordability(dti);
+    const affordabilityScore = calculateAffordability(
+        dti,
+        risk.score,
+        input.salaryTransfer,
+        input.vehicleCondition,
+        input.carAge
+    );
 
     return {
         dti,

@@ -5,6 +5,7 @@ import type { ApplicationRow } from "../shared/types/database.js";
 interface ApplicationQueryRow {
   application_id: number;
   requested_down_payment: number;
+  requested_months: number;
   birth_date: string;
   salary: number;
   current_liabilities: number;
@@ -26,6 +27,7 @@ export async function getApplicationById(
     `SELECT 
       a.id AS application_id,
       a.requested_down_payment,
+      a.requested_months,
       c.birth_date,
       c.salary,
       c.current_liabilities,
@@ -60,6 +62,7 @@ export async function getApplicationById(
     club_membership: row.club_membership ?? null,
     insurance_number: row.insurance_number ?? null,
     requestedDownPayment: Number(row.requested_down_payment || 0),
+    requestedMonths: Number(row.requested_months || 36),
     job_type: row.job_type ?? undefined,
     car_age: currentYear - Number(row.manufacturing_year || currentYear),
     salary_transfer: row.salary_transfer ?? false,
