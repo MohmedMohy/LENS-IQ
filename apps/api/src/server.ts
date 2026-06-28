@@ -3,7 +3,6 @@ import Fastify, { type FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import fastifyCookie from "@fastify/cookie";
-import fastifyStatic from "@fastify/static";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync } from "node:fs";
@@ -199,22 +198,54 @@ fastify.get("/health", async () => {
   }
 });
 
+const MIME_TYPES: Record<string, string> = {
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".json": "application/json",
+  ".map": "application/json",
+  ".txt": "text/plain",
+  ".ico": "image/x-icon",
+  ".html": "text/html",
+};
+
+let indexContent: string | null = null;
+const assetCache = new Map<string, { data: Buffer; type: string }>();
+
 if (FRONTEND_DIST) {
-  try {
-    await fastify.register(fastifyStatic, {
-      root: FRONTEND_DIST,
-      prefix: "/assets/",
-      decorateReply: false,
-    });
-  } catch {
-    fastify.log.warn("Frontend dist not found, skipping static serving");
-  }
+  fastify.get("/assets/*", async (request, reply) => {
+    const urlPath = request.url.split("?")[0];
+    const relativePath = urlPath.replace("/assets/", "");
+    const filePath = path.join(FRONTEND_DIST!, relativePath);
+    if (!filePath.startsWith(FRONTEND_DIST!)) {
+      return reply.callNotFound();
+    }
+    const cached = assetCache.get(relativePath);
+    if (cached) {
+      return reply.type(cached.type).send(cached.data);
+    }
+    try {
+      const data = readFileSync(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const type = MIME_TYPES[ext] || "application/octet-stream";
+      assetCache.set(relativePath, { data, type });
+      return reply.type(type).send(data);
+    } catch {
+      return reply.callNotFound();
+    }
+  });
 }
 
 const INDEX_HTML = FRONTEND_DIST ? path.join(FRONTEND_DIST, "index.html") : null;
 const FAVICON_PATH = FRONTEND_DIST && existsSync(path.join(FRONTEND_DIST, "favicon.svg"))
   ? path.join(FRONTEND_DIST, "favicon.svg") : null;
-let indexContent: string | null = null;
 
 if (FAVICON_PATH) {
   fastify.get("/favicon.svg", async (_request, reply) => {
