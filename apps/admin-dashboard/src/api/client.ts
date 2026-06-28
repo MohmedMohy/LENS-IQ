@@ -54,12 +54,15 @@ apiClient.interceptors.response.use(
         const isLoginRequest = originalRequest?.url?.includes("/auth/login") ?? false;
         const isRefreshRequest = originalRequest?.url?.includes("/auth/refresh") ?? false;
 
+        const isTimeout = error.code === "ECONNABORTED" || status === 0 && error.message?.includes("timeout");
         const message =
             error.response?.data?.message ??
             error.response?.data?.error ??
-            (status === 0
-                ? "Network error — check your connection."
-                : status === 401
+            (isTimeout
+                ? "Request timed out — the evaluation is taking longer than expected. Please try again."
+                : status === 0
+                    ? "Network error — check your connection."
+                    : status === 401
                     ? "Session expired. Please sign in again."
                     : status === 403
                         ? "You don't have permission to do this."

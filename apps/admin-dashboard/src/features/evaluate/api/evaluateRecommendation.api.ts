@@ -30,7 +30,7 @@ export type EvaluateRecommendationResponse = {
 
 export const evaluateRecommendationApi = {
   evaluate: async (payload: EvaluateRecommendationPayload): Promise<EvaluateRecommendationResponse> => {
-    const { data } = await apiClient.post("/engine/evaluate-recommendation", payload);
+    const { data } = await apiClient.post("/engine/evaluate-recommendation", payload, { timeout: 120000 });
     return data as EvaluateRecommendationResponse;
   },
 };

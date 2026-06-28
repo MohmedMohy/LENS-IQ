@@ -23,6 +23,7 @@ export default defineConfig({
       "/public": { target: "http://localhost:3000", changeOrigin: true },
       "/health": { target: "http://localhost:3000", changeOrigin: true },
       "/dashboard": { target: "http://localhost:3000", changeOrigin: true },
+      "/financier": { target: "http://localhost:3000", changeOrigin: true },
     },
   },
   preview: {

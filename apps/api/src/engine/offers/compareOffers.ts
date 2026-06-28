@@ -110,7 +110,9 @@ export async function compareOffersDetailed(
         return { approved, conditional, rejected, errors };
     }
 
-    for (const program of programs) {
+    const programResults = await Promise.all(programs.map(async (program) => {
+        const pApproved: RankedOffer[] = [];
+        const pConditional: RankedOffer[] = [];
         let programHadApproved = false;
 
         for (const months of effectiveTenors) {
@@ -131,14 +133,14 @@ export async function compareOffersDetailed(
 
                 if (offer.status === "APPROVED") {
                     programHadApproved = true;
-                    approved.push({
+                    pApproved.push({
                         ...offer,
                         programScore: 0,
                         rank: 0,
                     } as RankedOffer);
                     break;
                 } else if (offer.status === "CONDITIONAL") {
-                    conditional.push({
+                    pConditional.push({
                         ...offer,
                         programScore: 0,
                         rank: 0,
@@ -147,12 +149,19 @@ export async function compareOffersDetailed(
             }
         }
 
-        if (!programHadApproved) {
-            const baseEvaluation = await evaluateApplication(input, program, tenantId);
+        return { approved: pApproved, conditional: pConditional, programHadApproved, program };
+    }));
+
+    for (const pr of programResults) {
+        approved.push(...pr.approved);
+        conditional.push(...pr.conditional);
+
+        if (!pr.programHadApproved) {
+            const baseEvaluation = await evaluateApplication(input, pr.program, tenantId);
             rejected.push({
-                programId: program.id,
-                bankId: program.bankId,
-                programName: program.name,
+                programId: pr.program.id,
+                bankId: pr.program.bankId,
+                programName: pr.program.name,
                 status: "REJECTED",
                 reasons: baseEvaluation.reasons,
                 dti: 0,

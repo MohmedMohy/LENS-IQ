@@ -8,7 +8,7 @@ export const evaluateApi = {
     evaluate: async (
         payload: EvaluateRequest
     ): Promise<EvaluateResponse> => {
-        const { data } = await apiClient.post("/evaluate", payload);
+        const { data } = await apiClient.post("/evaluate", payload, { timeout: 120000 });
         return data;
     },
 };
