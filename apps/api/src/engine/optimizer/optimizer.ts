@@ -1,5 +1,5 @@
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
-import type { Program } from "../../shared/types/program.js";
+import type { Program, ProgramBank } from "../../shared/types/program.js";
 import type { Offer } from "../../shared/types/offer.js";
 import type { EvaluationResult } from "../../shared/types/result.js";
 
@@ -13,7 +13,6 @@ import {
   type CandidateRequest,
   type SmartOffer,
   type SmartOptimizerResult,
-  type ConstraintAnalysis,
   type OptimizationExplanation,
   type OptimizationStep,
   type OptimizationSummary,
@@ -25,43 +24,39 @@ import { MAX_DTI_STANDARD, MAX_DTI_GOVERNMENT, ELIGIBILITY_CEILING } from "../sc
 function mapJobType(jobType?: string): "government" | "listed_private" | "unlisted_private" | "self_employed" | "retired" | undefined {
   if (!jobType) return undefined;
   const map: Record<string, any> = {
-    government: "government",
-    gov: "government",
-    public: "government",
-    private: "unlisted_private",
-    listed: "listed_private",
-    listed_private: "listed_private",
-    self_employed: "self_employed",
-    self: "self_employed",
-    freelance: "self_employed",
-    freelancer: "self_employed",
+    government: "government", gov: "government", public: "government",
+    private: "unlisted_private", listed: "listed_private", listed_private: "listed_private",
+    self_employed: "self_employed", self: "self_employed", freelance: "self_employed", freelancer: "self_employed",
     retired: "retired",
   };
   return map[jobType.toLowerCase()] ?? undefined;
 }
 
-function makeCandidateFromOffer(offer: Offer, programId: number, bankId: number, calculationMethod: string): CandidateRequest {
-  return {
-    months: offer.tenor ?? offer.months,
-    downPaymentPercent: offer.downPaymentPct ?? 0,
-    downPaymentAmount: offer.downPaymentAmount ?? offer.downPayment,
-    financeAmount: offer.financeAmount,
-    programId,
-    bankId,
-    calculationMethod,
-  };
+function getEffectiveTerms(program: Program, bankId: number): ProgramBank {
+    const bankTerms = program.banks?.find(b => b.bankId === bankId);
+    if (bankTerms) return bankTerms;
+    return {
+        programId: program.id,
+        bankId,
+        interestRate: program.interestRate,
+        profitRate: program.profitRate,
+        minMonths: program.minMonths,
+        maxMonths: program.maxMonths,
+        minDownPaymentPercent: program.minDownPaymentPercent,
+        maxDownPaymentPercent: program.maxDownPaymentPercent,
+        maxFinanceAmount: program.maxFinanceAmount,
+        adminFeesPercent: program.adminFeesPercent,
+        maxCarAge: program.maxCarAge,
+        maxVehiclePrice: program.maxVehiclePrice,
+        active: true,
+    };
 }
 
 function checkNearMiss(
-  offer: Offer,
-  input: ApplicationInput,
-  employmentType: string | undefined,
-  config: OptimizerConfig
+  offer: Offer, input: ApplicationInput, employmentType: string | undefined, config: OptimizerConfig
 ): NearMissInfo | undefined {
   if (offer.status !== "REJECTED") return undefined;
-
   const maxAllowed = employmentType === "government" ? MAX_DTI_GOVERNMENT : MAX_DTI_STANDARD;
-
   if (offer.dti > maxAllowed && offer.dti <= ELIGIBILITY_CEILING) {
     const dtiDiff = offer.dti - maxAllowed;
     if (dtiDiff <= config.nearMissDtiThreshold) {
@@ -69,25 +64,17 @@ function checkNearMiss(
       suggestions.push(`Increase tenure to reduce DTI by ${dtiDiff.toFixed(1)}%`);
       const extraDP = Math.round((dtiDiff / 100) * input.salary * 12);
       suggestions.push(`Increase down payment by approximately ${extraDP.toLocaleString()} EGP`);
-      return {
-        nearMiss: true,
-        dtiDifference: dtiDiff,
-        suggestions,
-      };
+      return { nearMiss: true, dtiDifference: dtiDiff, suggestions };
     }
   }
-
   return undefined;
 }
 
 function buildExplanation(
-  originalRequest: CandidateRequest,
-  finalOffer: Offer,
-  steps: OptimizationStep[]
+  originalRequest: CandidateRequest, finalOffer: Offer, steps: OptimizationStep[]
 ): OptimizationExplanation {
   const changes: string[] = [];
   const stepDescriptions: string[] = [];
-
   for (const s of steps) {
     if (s.details) {
       stepDescriptions.push(s.details);
@@ -96,27 +83,62 @@ function buildExplanation(
       }
     }
   }
-
-  const reason = finalOffer.status === "APPROVED"
-    ? "Optimization successful"
-    : "Best available offer after optimization";
-
   return {
     originalTenure: originalRequest.months,
     optimizedTenure: finalOffer.tenor ?? finalOffer.months,
     steps: stepDescriptions,
-    reason,
+    reason: finalOffer.status === "APPROVED" ? "Optimization successful" : "Best available offer after optimization",
     changes,
   };
 }
 
-function logOptimization(
-  message: string,
-  data?: Record<string, unknown>
-): void {
+function logOptimization(message: string, data?: Record<string, unknown>): void {
   const timestamp = new Date().toISOString();
   const dataStr = data ? ` ${JSON.stringify(data)}` : "";
   console.log(`[OPTIMIZER] ${timestamp} ${message}${dataStr}`);
+}
+
+function generateAllParameterCombinations(
+  input: ApplicationInput, program: Program, bankTerms: ProgramBank
+): CandidateRequest[] {
+  const results: CandidateRequest[] = [];
+  const dpValues: number[] = [];
+  const monthValues: number[] = [];
+
+  const requestedDP = input.price > 0 ? Math.round((input.requestedDownPayment / input.price) * 100) : bankTerms.minDownPaymentPercent;
+
+  for (let dp = bankTerms.minDownPaymentPercent; dp <= bankTerms.maxDownPaymentPercent; dp += 5) {
+    dpValues.push(dp);
+  }
+  if (!dpValues.includes(requestedDP) && requestedDP >= bankTerms.minDownPaymentPercent && requestedDP <= bankTerms.maxDownPaymentPercent) {
+    dpValues.push(requestedDP);
+  }
+
+  for (let m = bankTerms.minMonths; m <= bankTerms.maxMonths; m += 12) {
+    monthValues.push(m);
+  }
+  const requestedM = Math.max(bankTerms.minMonths, Math.min(bankTerms.maxMonths, input.requestedMonths));
+  if (!monthValues.includes(requestedM)) {
+    monthValues.push(requestedM);
+  }
+  monthValues.sort((a, b) => a - b);
+
+  for (const months of monthValues) {
+    for (const dp of dpValues) {
+      const dpAmount = input.price * (dp / 100);
+      results.push({
+        months,
+        downPaymentPercent: dp,
+        downPaymentAmount: dpAmount,
+        financeAmount: Math.max(0, input.price - dpAmount),
+        programId: program.id,
+        bankId: bankTerms.bankId,
+        calculationMethod: program.calculationMethod,
+      });
+    }
+  }
+
+  return results;
 }
 
 export async function smartOptimize(
@@ -130,116 +152,114 @@ export async function smartOptimize(
   const approvedOffers: SmartOffer[] = [];
   const timeline: OptimizationStep[] = [];
   let evaluatedCount = 0;
-  let depth = 0;
   let maxDepthReached = 0;
   let totalCandidatesGenerated = 0;
 
   const activePrograms = programs.filter(p => p.active);
   if (activePrograms.length === 0) {
-    logOptimization("No active programs found");
     return {
-      offers: [],
-      timeline: { steps: [] },
-      summary: {
-        evaluatedCandidates: 0,
-        approvedOffers: 0,
-        rejectedOffers: 0,
-        bestScore: 0,
-        optimizationTimeMs: 0,
-        maxDepthReached: 0,
-        candidatesGenerated: 0,
-      },
+      offers: [], timeline: { steps: [] },
+      summary: { evaluatedCandidates: 0, approvedOffers: 0, rejectedOffers: 0, bestScore: 0, optimizationTimeMs: 0, maxDepthReached: 0, candidatesGenerated: 0 },
       visitedStates: 0,
     };
   }
 
   const employmentType = mapJobType(input.job_type);
 
-  const initialDPPct = input.price > 0
-    ? Math.round((input.requestedDownPayment / input.price) * 100)
-    : 0;
+  for (const p of activePrograms) {
+    const activeBanks = (p.banks || []).filter(b => b.active);
+    const bankIds = activeBanks.length > 0 ? activeBanks.map(b => b.bankId) : [0];
 
-  const initialRequests: CandidateRequest[] = activePrograms.map(p => {
-    const dpPct = Math.max(p.minDownPaymentPercent, Math.min(p.maxDownPaymentPercent, initialDPPct));
-    return {
-      months: Math.max(p.minMonths, Math.min(p.maxMonths, input.requestedMonths)),
-      downPaymentPercent: dpPct,
-      downPaymentAmount: input.price * (dpPct / 100),
-      financeAmount: Math.max(0, input.price - input.price * (dpPct / 100)),
-      programId: p.id,
-      bankId: p.bankId,
-      calculationMethod: p.calculationMethod,
-    };
-  });
+    for (const bankId of bankIds) {
+      const bankTerms = getEffectiveTerms(p, bankId);
+      const combos = generateAllParameterCombinations(input, p, bankTerms);
+      totalCandidatesGenerated += combos.length;
+      for (const c of combos) {
+        const key = createCandidateKey(c);
+        if (!visited.has(key)) {
+          visited.add(key);
+        }
+      }
+    }
+  }
 
-  const priorityQueue: Array<{ request: CandidateRequest; depth: number; parentSteps: OptimizationStep[] }> =
-    initialRequests.map(req => ({ request: req, depth: 0, parentSteps: [] }));
+  timeline.push({ step: 1, action: "Initialize optimization", details: `Generated ${visited.size} unique parameter combinations across ${activePrograms.length} programs` });
 
-  timeline.push({ step: 1, action: "Initialize optimization", details: `Starting with ${activePrograms.length} active programs` });
+  let stepCounter = 2;
+  let bestProgramScore = 0;
 
-  while (priorityQueue.length > 0 && approvedOffers.length < config.maxOffers) {
+  const allKeys = [...visited];
+  visited.clear();
+
+  for (let i = 0; i < allKeys.length && approvedOffers.length < config.maxOffers; i++) {
     const elapsed = Date.now() - startTime;
     if (elapsed > config.maxExecutionTimeMs) {
-      timeline.push({ step: timeline.length + 1, action: "Execution time limit reached", details: `${elapsed}ms exceeded max ${config.maxExecutionTimeMs}ms` });
-      logOptimization("Execution time limit reached", { elapsed, maxCandidates: evaluatedCount });
+      timeline.push({ step: stepCounter++, action: "Execution time limit reached", details: `${elapsed}ms` });
       break;
     }
-
     if (evaluatedCount >= config.maxCandidates) {
-      timeline.push({ step: timeline.length + 1, action: "Max candidate limit reached", details: `Evaluated ${evaluatedCount} candidates` });
-      logOptimization("Max candidate limit reached", { evaluatedCount });
+      timeline.push({ step: stepCounter++, action: "Max candidate limit reached", details: `${evaluatedCount} candidates` });
       break;
     }
+    if (evaluatedCount >= allKeys.length) break;
 
-    if (depth >= config.maxDepth) {
-      timeline.push({ step: timeline.length + 1, action: "Max depth reached", details: `Depth ${depth}` });
-      break;
-    }
+    const key = allKeys[i];
+    if (visited.has(key)) continue;
+    visited.add(key);
 
-    const current = priorityQueue.shift()!;
-    const req = current.request;
-    depth = current.depth;
-    maxDepthReached = Math.max(maxDepthReached, depth);
+    const parts = key.split(":");
+    const bankId = Number(parts[0]);
+    const programId = Number(parts[1]);
+    const months = Number(parts[2]);
+    const financeAmount = Number(parts[3]);
+    const calculationMethod = parts[4];
+    const downPaymentPercent = Number(parts[5]);
 
-    const candidateKey = createCandidateKey(req);
-    if (visited.has(candidateKey)) continue;
-    visited.add(candidateKey);
-
-    const program = activePrograms.find(p => p.id === req.programId);
+    const program = activePrograms.find(p => p.id === programId);
     if (!program) continue;
 
-    const evaluation = await evaluateApplication(input, program, tenantId);
+    const bankTerms = getEffectiveTerms(program, bankId);
 
+    const downPaymentAmount = input.price * (downPaymentPercent / 100);
+
+    const evaluation = await evaluateApplication(input, program, tenantId);
     const evaluationWithOverrides: EvaluationResult = {
       ...evaluation,
-      calculationMethod: req.calculationMethod as any,
+      calculationMethod: calculationMethod as any,
     };
 
-    const offer = generateOffer(input, program, evaluationWithOverrides, {
-      overrideMonths: req.months,
-      overrideDownPaymentPercent: req.downPaymentPercent,
+    const bankName = bankTerms.bankName;
+    const offer = generateOffer(input, program, evaluationWithOverrides, bankTerms, bankId, bankName, {
+      overrideMonths: months,
+      overrideDownPaymentPercent: downPaymentPercent,
     });
 
     evaluatedCount++;
 
-    const analysis = analyzeConstraints(offer, input, program);
-
-    if (offer.status !== "REJECTED" || analysis.severity === 0) {
+    if (offer.status === "APPROVED" || offer.status === "CONDITIONAL") {
       const isDuplicate = approvedOffers.some(
-        a => a.programId === offer.programId
-          && (a.tenor ?? a.months) === (offer.tenor ?? offer.months)
+        a => a.programId === programId
+          && a.bankId === bankId
+          && (a.tenor ?? a.months) === months
           && a.financeAmount === offer.financeAmount
-          && a.downPaymentPct === offer.downPaymentPct
-          && a.calculationMethod === offer.calculationMethod
+          && a.downPaymentPct === downPaymentPercent
+          && a.calculationMethod === calculationMethod
       );
 
-      if (!isDuplicate && (offer.status === "APPROVED" || offer.status === "CONDITIONAL")) {
+      if (!isDuplicate) {
         const nearMiss = config.enableNearMiss ? checkNearMiss(offer, input, employmentType, config) : undefined;
-        const explanation = buildExplanation(
-          initialRequests[0] ?? req,
-          offer,
-          [...current.parentSteps, { step: timeline.length + 1, action: "Approved", details: "Offer approved" }]
-        );
+        const originalRequest: CandidateRequest = {
+          months: input.requestedMonths,
+          downPaymentPercent: input.price > 0 ? Math.round((input.requestedDownPayment / input.price) * 100) : 0,
+          downPaymentAmount: input.requestedDownPayment,
+          financeAmount: input.price - input.requestedDownPayment,
+          programId, bankId, calculationMethod,
+        };
+        const explanation = buildExplanation(originalRequest, offer, [
+          { step: 1, action: "Evaluate", details: `Original: ${input.requestedMonths}mo, ${Math.round((input.requestedDownPayment / input.price) * 100)}% DP` },
+          { step: 2, action: "Optimize", details: `${months}mo, ${downPaymentPercent}% DP, ${calculationMethod}` },
+          { step: 3, action: "Approved", details: `DTI ${offer.dti}%, Score ${offer.approvalProbability}%` },
+        ]);
 
         const smartOffer: SmartOffer = {
           ...offer,
@@ -249,72 +269,46 @@ export async function smartOptimize(
 
         approvedOffers.push(smartOffer);
 
-        timeline.push({
-          step: timeline.length + 1,
-          action: "Found approved offer",
-          details: `Program: ${program.name}, ${req.months} months, ${req.downPaymentPercent}% DP`,
-        });
+        if (offer.approvalProbability > bestProgramScore) {
+          bestProgramScore = offer.approvalProbability;
+        }
 
-        logOptimization("Approved offer found", {
-          programId: program.id,
-          months: req.months,
-          dps: req.downPaymentPercent,
-          score: offer.approvalProbability,
+        timeline.push({
+          step: stepCounter++, action: "Found approved offer",
+          details: `${program.name} / ${bankName || `Bank #${bankId}`}: ${months}mo, ${downPaymentPercent}% DP, approval ${offer.approvalProbability}%`,
         });
       }
-    }
-
-    if (offer.status === "REJECTED" && depth < config.maxDepth) {
-      const candidates = generateCandidatesFn(input, req, {
-        failedRules: analysis.failedRules,
-        suggestions: analysis.suggestions,
-      }, activePrograms, config);
-
-      totalCandidatesGenerated += candidates.length;
-
-      const uniqueCandidates = candidates.filter(c => !visited.has(createCandidateKey(c)));
-
-      for (const c of uniqueCandidates.slice(0, 5)) {
-        const actionDescription = describeChange(req, c);
-        const nextSteps = [
-          ...current.parentSteps,
-          {
-            step: current.parentSteps.length + 1,
-            action: actionDescription,
-            details: `Program ${c.programId}: ${req.months}→${c.months}mo, ${req.downPaymentPercent}→${c.downPaymentPercent}% DP, ${req.calculationMethod}→${c.calculationMethod}`,
-          },
-        ];
-        priorityQueue.push({ request: c, depth: depth + 1, parentSteps: nextSteps });
+    } else {
+      const analysis = analyzeConstraints(offer, input, program);
+      if (config.enableNearMiss) {
+        const nearMiss = checkNearMiss(offer, input, employmentType, config);
+        if (nearMiss) {
+          timeline.push({
+            step: stepCounter++, action: "Near miss detected",
+            details: `DTI ${offer.dti}%, ${nearMiss.suggestions.join(", ")}`,
+          });
+        }
       }
     }
   }
 
   const ranked = rankOffersSmart(approvedOffers.length > 0 ? approvedOffers : [], input);
-
   const finalOffers = ranked.slice(0, config.maxOffers);
 
   const totalApproved = finalOffers.filter(o => o.status === "APPROVED").length;
   const totalRejected = finalOffers.filter(o => o.status === "REJECTED").length;
 
-  const bestScore = finalOffers.length > 0 ? (finalOffers[0].programScore ?? 0) : 0;
-
   const summary: OptimizationSummary = {
     evaluatedCandidates: evaluatedCount,
     approvedOffers: totalApproved,
     rejectedOffers: totalRejected,
-    bestScore,
+    bestScore: bestProgramScore,
     optimizationTimeMs: Date.now() - startTime,
     maxDepthReached,
     candidatesGenerated: totalCandidatesGenerated,
   };
 
-  logOptimization("Optimization complete", {
-    evaluated: evaluatedCount,
-    approved: totalApproved,
-    bestScore,
-    timeMs: summary.optimizationTimeMs,
-    depth: maxDepthReached,
-  });
+  logOptimization("Optimization complete", { evaluated: evaluatedCount, approved: finalOffers.length, bestScore: bestProgramScore, timeMs: summary.optimizationTimeMs });
 
   return {
     offers: finalOffers,
@@ -322,15 +316,4 @@ export async function smartOptimize(
     summary,
     visitedStates: visited.size,
   };
-}
-
-function describeChange(from: CandidateRequest, to: CandidateRequest): string {
-  if (from.months !== to.months && from.months < to.months) return "Increase tenure";
-  if (from.months !== to.months && from.months > to.months) return "Decrease tenure";
-  if (from.downPaymentPercent !== to.downPaymentPercent) return "Increase down payment";
-  if (from.financeAmount !== to.financeAmount) return "Adjust finance amount";
-  if (from.programId !== to.programId) return "Switch program";
-  if (from.bankId !== to.bankId) return "Switch bank";
-  if (from.calculationMethod !== to.calculationMethod) return "Switch calculation method";
-  return "Adjust parameters";
 }

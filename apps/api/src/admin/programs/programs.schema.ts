@@ -1,8 +1,16 @@
 import { z } from "zod";
 
+const customerTypeSchema = z.enum(["salary_transfer", "employee", "self_employed"]);
+
 export const createProgramSchema = z.object({
-    bank_id: z.number().int().positive(),
     name: z.string().min(1),
+    code: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    customer_types: z.array(customerTypeSchema).min(1, "Select at least one customer type"),
+    priority: z.number().int().min(0).default(0),
+    required_documents: z.array(z.string()).default([]),
+
+    bank_ids: z.array(z.number().int().positive()).min(1, "Select at least one bank"),
 
     financing_type: z.enum(["conventional", "islamic"]).default("conventional"),
     calculation_method: z.enum(["reducing", "flat", "murabaha"]).default("reducing"),
@@ -15,7 +23,6 @@ export const createProgramSchema = z.object({
     allowed_conditions: z.enum(["new", "used", "both"]).default("both"),
     max_vehicle_price: z.number().positive().optional().nullable(),
 
-    // rates stored as percentage: 14.5 = 14.5% annual
     interest_rate: z.number().min(0).max(100).default(0),
     profit_rate: z.number().min(0).max(100).optional().nullable(),
 

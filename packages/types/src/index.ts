@@ -14,11 +14,13 @@ export type {
 
 export type {
   Program,
+  ProgramBank,
   CreateProgramPayload,
   UpdateProgramPayload,
   FinancingType,
   CalculationMethod,
   AllowedConditions,
+  CustomerType,
 } from "./program";
 
 export type {
@@ -26,6 +28,7 @@ export type {
   RuleField,
   RuleOperator,
   RuleAction,
+  RuleScope,
   CreateRulePayload,
   UpdateRulePayload,
 } from "./rule";

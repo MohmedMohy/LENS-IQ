@@ -1,5 +1,3 @@
-// src/admin/banks/banks.schema.ts
-
 import { z } from "zod";
 
 export const createBankSchema = z.object({

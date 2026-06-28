@@ -1,5 +1,5 @@
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
-import type { Program } from "../../shared/types/program.js";
+import type { Program, ProgramBank } from "../../shared/types/program.js";
 import type { Offer } from "../../shared/types/offer.js";
 import type { CompareOffersResult, RankedOffer, RejectedOffer } from "../../shared/types/compareResult.js";
 
@@ -42,57 +42,78 @@ function resolveCarAge(input: ApplicationInput): number {
     return 0;
 }
 
+function getEffectiveTerms(program: Program, bankId: number): ProgramBank {
+    const bankTerms = program.banks?.find(b => b.bankId === bankId);
+    if (bankTerms) return bankTerms;
+    return {
+        programId: program.id,
+        bankId,
+        interestRate: program.interestRate,
+        profitRate: program.profitRate,
+        minMonths: program.minMonths,
+        maxMonths: program.maxMonths,
+        minDownPaymentPercent: program.minDownPaymentPercent,
+        maxDownPaymentPercent: program.maxDownPaymentPercent,
+        maxFinanceAmount: program.maxFinanceAmount,
+        adminFeesPercent: program.adminFeesPercent,
+        maxCarAge: program.maxCarAge,
+        maxVehiclePrice: program.maxVehiclePrice,
+        active: true,
+    };
+}
+
 function generateScenarios(
     input: ApplicationInput,
-    program: Program
+    program: Program,
+    bankTerms: ProgramBank
 ): { months: number; downPaymentPct: number }[] {
     const scenarios: { months: number; downPaymentPct: number }[] = [];
 
-    const clientMonths = input.requestedMonths || program.maxMonths;
+    const clientMonths = input.requestedMonths || bankTerms.maxMonths;
     const clientDP = input.price > 0
         ? Math.round((input.requestedDownPayment / input.price) * 100)
-        : program.minDownPaymentPercent;
+        : bankTerms.minDownPaymentPercent;
 
     const monthsSet = new Set<number>();
 
-    monthsSet.add(clamp(clientMonths, program.minMonths, program.maxMonths));
+    monthsSet.add(clamp(clientMonths, bankTerms.minMonths, bankTerms.maxMonths));
 
-    for (let m = Math.min(program.maxMonths, clientMonths + 12); m <= program.maxMonths; m += 12) {
+    for (let m = Math.min(bankTerms.maxMonths, clientMonths + 12); m <= bankTerms.maxMonths; m += 12) {
         monthsSet.add(m);
     }
-    for (let m = clientMonths - 12; m >= program.minMonths; m -= 12) {
+    for (let m = clientMonths - 12; m >= bankTerms.minMonths; m -= 12) {
         monthsSet.add(m);
     }
 
     for (const m of [12, 24, 36, 48, 60, 72, 84, 96]) {
-        if (m >= program.minMonths && m <= program.maxMonths) {
+        if (m >= bankTerms.minMonths && m <= bankTerms.maxMonths) {
             monthsSet.add(m);
         }
     }
 
     const validMonths = [...monthsSet]
-        .filter(m => m >= program.minMonths && m <= program.maxMonths)
+        .filter(m => m >= bankTerms.minMonths && m <= bankTerms.maxMonths)
         .sort((a, b) => b - a);
 
     const dpSet = new Set<number>();
 
     for (const dp of [20, 25, 30, 35, 40, 45, 50]) {
-        if (dp >= program.minDownPaymentPercent && dp <= program.maxDownPaymentPercent) {
+        if (dp >= bankTerms.minDownPaymentPercent && dp <= bankTerms.maxDownPaymentPercent) {
             dpSet.add(dp);
         }
     }
 
-    if (clientDP >= program.minDownPaymentPercent && clientDP <= program.maxDownPaymentPercent) {
+    if (clientDP >= bankTerms.minDownPaymentPercent && clientDP <= bankTerms.maxDownPaymentPercent) {
         dpSet.add(clientDP);
     }
 
     for (let step = 5; step <= 25; step += 5) {
         const higher = clientDP + step;
         const lower = clientDP - step;
-        if (higher >= program.minDownPaymentPercent && higher <= program.maxDownPaymentPercent) {
+        if (higher >= bankTerms.minDownPaymentPercent && higher <= bankTerms.maxDownPaymentPercent) {
             dpSet.add(higher);
         }
-        if (lower >= program.minDownPaymentPercent && lower <= program.maxDownPaymentPercent) {
+        if (lower >= bankTerms.minDownPaymentPercent && lower <= bankTerms.maxDownPaymentPercent) {
             dpSet.add(lower);
         }
     }
@@ -172,7 +193,6 @@ function addSuggestedAlternatives(allOffers: Offer[]): void {
         }
 
         candidates.sort((a, b) => b.approvalProbability - a.approvalProbability);
-
         offer.suggestedAlternatives = candidates.slice(0, 3);
     }
 }
@@ -210,28 +230,50 @@ export async function compareOffersDetailed(
     for (const program of programs) {
         const evaluation = await evaluateApplication(input, program, tenantId);
 
-        const scenarios = generateScenarios(input, program);
+        if (evaluation.status === "REJECTED") {
+            const bankTerms = getEffectiveTerms(program, 0);
+            const offer = generateOffer(input, program, evaluation, bankTerms, 0, undefined);
+            allOffers.push(offer);
+            continue;
+        }
 
-        const effectiveMaxCarAge = Math.min(conditionMaxCarAge, program.maxCarAge);
+        const activeBanks = (program.banks || []).filter(b => b.active);
+        const bankIdsToEvaluate = activeBanks.length > 0
+            ? activeBanks.map(b => b.bankId)
+            : [0];
 
-        for (const scen of scenarios) {
-            if (scen.months < program.minMonths || scen.months > program.maxMonths) continue;
-            if (scen.downPaymentPct < program.minDownPaymentPercent) continue;
-            if (scen.downPaymentPct > program.maxDownPaymentPercent) continue;
+        for (const bankId of bankIdsToEvaluate) {
+            const bankTerms = getEffectiveTerms(program, bankId);
+
+            if (!bankTerms.active) continue;
+
+            if (bankTerms.maxVehiclePrice !== null && input.price > bankTerms.maxVehiclePrice) continue;
+
+            const effectiveMaxCarAge = Math.min(conditionMaxCarAge, bankTerms.maxCarAge);
             if (carAge > effectiveMaxCarAge) continue;
 
-            const downPaymentAmount = input.price * (scen.downPaymentPct / 100);
-            const loanAmount = input.price - downPaymentAmount;
-            const ltvRatio = (loanAmount / input.price) * 100;
+            const scenarios = generateScenarios(input, program, bankTerms);
 
-            if (ltvRatio > maxLTV) continue;
+            for (const scen of scenarios) {
+                if (scen.months < bankTerms.minMonths || scen.months > bankTerms.maxMonths) continue;
+                if (scen.downPaymentPct < bankTerms.minDownPaymentPercent) continue;
+                if (scen.downPaymentPct > bankTerms.maxDownPaymentPercent) continue;
 
-            const offer = generateOffer(input, program, evaluation, {
-                overrideMonths: scen.months,
-                overrideDownPaymentPercent: scen.downPaymentPct,
-            });
+                const downPaymentAmount = input.price * (scen.downPaymentPct / 100);
+                const loanAmount = input.price - downPaymentAmount;
+                const ltvRatio = (loanAmount / input.price) * 100;
 
-            allOffers.push(offer);
+                if (ltvRatio > maxLTV) continue;
+
+                if (bankTerms.maxFinanceAmount !== null && loanAmount > bankTerms.maxFinanceAmount) continue;
+
+                const offer = generateOffer(input, program, evaluation, bankTerms, bankId, undefined, {
+                    overrideMonths: scen.months,
+                    overrideDownPaymentPercent: scen.downPaymentPct,
+                });
+
+                allOffers.push(offer);
+            }
         }
     }
 
@@ -240,17 +282,18 @@ export async function compareOffersDetailed(
             const hasScenario = allOffers.some(o => (o.tenor ?? o.months) === t);
             if (!hasScenario) {
                 for (const program of programs) {
-                    const existing = allOffers.find(o => o.programId === program.id);
-                    if (existing) continue;
-                    if (t >= program.minMonths && t <= program.maxMonths) {
-                        const evaluation = await evaluateApplication(input, program, tenantId);
-                        const defaultDP = Math.max(program.minDownPaymentPercent, 25);
-                        const offer = generateOffer(input, program, evaluation, {
-                            overrideMonths: t,
-                            overrideDownPaymentPercent: defaultDP,
-                        });
-                        allOffers.push(offer);
-                        break;
+                    const evaluation = await evaluateApplication(input, program, tenantId);
+                    const activeBanks = (program.banks || []).filter(b => b.active);
+                    for (const bankTerms of activeBanks) {
+                        if (t >= bankTerms.minMonths && t <= bankTerms.maxMonths) {
+                            const defaultDP = Math.max(bankTerms.minDownPaymentPercent, 25);
+                            const offer = generateOffer(input, program, evaluation, bankTerms, bankTerms.bankId, undefined, {
+                                overrideMonths: t,
+                                overrideDownPaymentPercent: defaultDP,
+                            });
+                            allOffers.push(offer);
+                            break;
+                        }
                     }
                 }
             }

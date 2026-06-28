@@ -87,7 +87,7 @@ export async function evaluateRecommendationRoutes(fastify: FastifyInstance) {
                 }
 
                 if (body.recommendationType === "BEST_BANK_ALTERNATIVE" && body.suggestedParams.bankId) {
-                    programs = programs.filter(p => p.bankId === body.suggestedParams.bankId);
+                    programs = programs.filter(p => (p.banks || []).some(b => b.bankId === body.suggestedParams.bankId));
                     if (programs.length === 0) {
                         return sendError(reply, "No programs found for the selected bank", 404);
                     }

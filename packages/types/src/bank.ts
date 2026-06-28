@@ -4,6 +4,7 @@ export interface Bank {
   code: string;
   logo_url: string | null;
   active: boolean;
+  supported_program_ids?: number[];
 }
 
 export interface CreateBankPayload {

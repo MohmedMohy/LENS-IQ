@@ -1,9 +1,6 @@
-// src/admin/banks/service.ts
-
 import { db } from "../../db/db.js";
 import type { CreateBankDTO, UpdateBankDTO } from "./banks.schema.js";
 
-/* CREATE */
 export async function createBank(data: CreateBankDTO, tenantId: number) {
     const result = await db.query(
         `INSERT INTO banks (tenant_id, name, code, logo_url, active)
@@ -11,33 +8,31 @@ export async function createBank(data: CreateBankDTO, tenantId: number) {
      RETURNING *`,
         [tenantId, data.name, data.code, data.logo_url ?? null, data.active]
     );
-
     return result.rows[0];
 }
 
-/* GET */
 export async function getBanks(tenantId: number) {
     const result = await db.query(
-        `SELECT * FROM banks 
-     WHERE tenant_id = $1 AND active = true
-     ORDER BY id DESC`,
+        `SELECT b.*,
+            COALESCE(
+                json_agg(DISTINCT pb.program_id) FILTER (WHERE pb.program_id IS NOT NULL),
+                '[]'
+            ) AS supported_program_ids
+         FROM banks b
+         LEFT JOIN program_banks pb ON pb.bank_id = b.id
+         WHERE b.tenant_id = $1
+         GROUP BY b.id
+         ORDER BY b.id DESC`,
         [tenantId]
     );
-
     return result.rows;
 }
 
-/* UPDATE */
-export async function updateBank(
-    id: number,
-    data: UpdateBankDTO,
-    tenantId: number
-) {
+export async function updateBank(id: number, data: UpdateBankDTO, tenantId: number) {
     const existing = await db.query(
         `SELECT * FROM banks WHERE id = $1 AND tenant_id = $2`,
         [id, tenantId]
     );
-
     const b = existing.rows[0];
     if (!b) throw new Error("Bank not found");
 
@@ -55,20 +50,16 @@ export async function updateBank(
             tenantId,
         ]
     );
-
     return result.rows[0];
 }
 
-/* DELETE */
 export async function deleteBank(id: number, tenantId: number) {
     const result = await db.query(
-        `DELETE FROM banks 
-     WHERE id = $1 AND tenant_id = $2 
+        `DELETE FROM banks
+     WHERE id = $1 AND tenant_id = $2
      RETURNING *`,
         [id, tenantId]
     );
-
     if (!result.rows[0]) throw new Error("Bank not found");
-
     return result.rows[0];
 }

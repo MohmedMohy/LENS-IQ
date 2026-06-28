@@ -1,4 +1,4 @@
-import type { Program } from "../../shared/types/program.js";
+import type { Program, ProgramBank } from "../../shared/types/program.js";
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 import type { EvaluationResult, EvaluationStatus } from "../../shared/types/result.js";
 import type { Offer } from "../../shared/types/offer.js";
@@ -66,25 +66,40 @@ export function generateOffer(
     input: ApplicationInput,
     program: Program,
     evaluation: EvaluationResult,
+    bankTerms?: ProgramBank,
+    bankId?: number,
+    bankName?: string,
     overrides?: GenerateOfferOverrides
 ): Offer {
 
     const employmentType = mapJobType(input.job_type);
     const maxAllowedDTI = employmentType === 'government' ? MAX_DTI_GOVERNMENT : MAX_DTI_STANDARD;
-    const bankName = (program as any).bankName ?? undefined;
+
+    const effectiveBankId = bankId ?? (bankTerms?.bankId ?? 0);
+    const effectiveBankName = bankName ?? (bankTerms as any)?.bankName ?? undefined;
     const programName = program.name;
 
+    const finalInterestRate = bankTerms
+        ? bankTerms.interestRate + (evaluation.interestModifier || 0)
+        : program.interestRate + (evaluation.interestModifier || 0);
+
+    const effectiveMinMonths = bankTerms?.minMonths ?? program.minMonths;
+    const effectiveMaxMonths = bankTerms?.maxMonths ?? program.maxMonths;
+    const effectiveMinDP = bankTerms?.minDownPaymentPercent ?? program.minDownPaymentPercent;
+    const effectiveMaxDP = bankTerms?.maxDownPaymentPercent ?? program.maxDownPaymentPercent;
+    const effectiveAdminFees = bankTerms?.adminFeesPercent ?? program.adminFeesPercent;
+    const effectiveMaxFinance = bankTerms?.maxFinanceAmount ?? program.maxFinanceAmount;
+    const effectiveProfitRate = bankTerms?.profitRate ?? program.profitRate;
+    const effectiveFinancingType = program.financingType;
+
     const finalMonths = Math.max(1,
-        (overrides?.overrideMonths ?? program.maxMonths) + (evaluation.maxMonthsModifier || 0)
+        (overrides?.overrideMonths ?? effectiveMaxMonths) + (evaluation.maxMonthsModifier || 0)
     );
 
-    const finalInterestRate =
-        program.interestRate + (evaluation.interestModifier || 0);
-
-    const downPaymentPercent = overrides?.overrideDownPaymentPercent ?? program.minDownPaymentPercent;
+    const downPaymentPercent = overrides?.overrideDownPaymentPercent ?? effectiveMinDP;
 
     const minBankDownPayment =
-        input.price * (program.minDownPaymentPercent / 100);
+        input.price * (effectiveMinDP / 100);
 
     const requestedDownPayment =
         input.price * (downPaymentPercent / 100);
@@ -99,8 +114,8 @@ export function generateOffer(
     if (loanAmount <= 0) {
         return {
             programId: program.id,
-            bankId: program.bankId,
-            bankName,
+            bankId: effectiveBankId,
+            bankName: effectiveBankName,
             programName,
             financeAmount: 0,
             downPayment: actualDownPayment,
@@ -126,7 +141,7 @@ export function generateOffer(
         };
     }
 
-    const adminFeesAmount = loanAmount * (program.adminFeesPercent / 100);
+    const adminFeesAmount = loanAmount * (effectiveAdminFees / 100);
 
     const calcMethod = program.calculationMethod ?? "reducing";
 
@@ -136,8 +151,8 @@ export function generateOffer(
             annualRate: finalInterestRate,
             months: finalMonths,
             adminFees: adminFeesAmount,
-            costPrice: program.financingType === "islamic" ? loanAmount : undefined,
-            profitMarginPercent: program.profitRate ?? undefined,
+            costPrice: effectiveFinancingType === "islamic" ? loanAmount : undefined,
+            profitMarginPercent: effectiveProfitRate ?? undefined,
         },
         calcMethod
     );
@@ -197,8 +212,8 @@ export function generateOffer(
 
     return {
         programId: program.id,
-        bankId: program.bankId,
-        bankName,
+        bankId: effectiveBankId,
+        bankName: effectiveBankName,
         programName,
         financeAmount: loanAmount,
         downPayment: actualDownPayment,

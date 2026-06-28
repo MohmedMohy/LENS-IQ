@@ -10,8 +10,13 @@ export interface BankRow {
 export interface ProgramRow {
   id: number;
   tenant_id: number;
-  bank_id: number;
   name: string;
+  code: string | null;
+  description: string | null;
+  customer_types: string[];
+  priority: number;
+  required_documents: any;
+  default_risk_rules: any;
   financing_type: string;
   calculation_method: string;
   min_salary: number;
@@ -28,6 +33,22 @@ export interface ProgramRow {
   max_down_payment_percent: number;
   max_finance_amount: number | null;
   admin_fees_percent: number;
+  active: boolean;
+}
+
+export interface ProgramBankRow {
+  program_id: number;
+  bank_id: number;
+  interest_rate: number;
+  profit_rate: number | null;
+  min_months: number;
+  max_months: number;
+  min_down_payment_percent: number;
+  max_down_payment_percent: number;
+  max_finance_amount: number | null;
+  admin_fees_percent: number;
+  max_car_age: number;
+  max_vehicle_price: number | null;
   active: boolean;
 }
 
@@ -72,8 +93,10 @@ export interface RuleRow {
   id: number;
   tenant_id: number;
   program_id: number;
+  scope: string;
   field: string;
   operator: string;
   value: string;
   action: string;
+  priority: number;
 }

@@ -1,10 +1,30 @@
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
-import type { Program } from "../../shared/types/program.js";
+import type { Program, ProgramBank } from "../../shared/types/program.js";
 import type { CandidateRequest, OptimizationSuggestion } from "./types.js";
 import type { OptimizerConfig } from "./config.js";
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
+}
+
+function getBankTerms(program: Program): ProgramBank {
+  const firstBank = program.banks?.[0];
+  if (firstBank) return firstBank;
+  return {
+    programId: program.id,
+    bankId: 0,
+    interestRate: program.interestRate,
+    profitRate: program.profitRate,
+    minMonths: program.minMonths,
+    maxMonths: program.maxMonths,
+    minDownPaymentPercent: program.minDownPaymentPercent,
+    maxDownPaymentPercent: program.maxDownPaymentPercent,
+    maxFinanceAmount: program.maxFinanceAmount,
+    adminFeesPercent: program.adminFeesPercent,
+    maxCarAge: program.maxCarAge,
+    maxVehiclePrice: program.maxVehiclePrice,
+    active: true,
+  };
 }
 
 function generateDtiCandidates(
@@ -16,7 +36,8 @@ function generateDtiCandidates(
   config: OptimizerConfig
 ): CandidateRequest[] {
   const candidates: CandidateRequest[] = [];
-  const maxAllowed = program.maxMonths;
+  const bankTerms = getBankTerms(program);
+  const maxAllowed = bankTerms.maxMonths;
   for (let m = baseMonths + config.tenureStep; m <= maxAllowed; m += config.tenureStep) {
     candidates.push({
       months: m,
@@ -24,7 +45,7 @@ function generateDtiCandidates(
       downPaymentAmount: input.price * (baseDownPaymentPct / 100),
       financeAmount: baseFinanceAmount,
       programId: program.id,
-      bankId: program.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: program.calculationMethod,
     });
   }
@@ -40,7 +61,8 @@ function generateTenureReductionCandidates(
   config: OptimizerConfig
 ): CandidateRequest[] {
   const candidates: CandidateRequest[] = [];
-  const minAllowed = program.minMonths;
+  const bankTerms = getBankTerms(program);
+  const minAllowed = bankTerms.minMonths;
   for (let m = baseMonths - config.tenureStep; m >= minAllowed; m -= config.tenureStep) {
     candidates.push({
       months: m,
@@ -48,7 +70,7 @@ function generateTenureReductionCandidates(
       downPaymentAmount: input.price * (baseDownPaymentPct / 100),
       financeAmount: baseFinanceAmount,
       programId: program.id,
-      bankId: program.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: program.calculationMethod,
     });
   }
@@ -64,19 +86,20 @@ function generateFinanceReductionCandidates(
   config: OptimizerConfig
 ): CandidateRequest[] {
   const candidates: CandidateRequest[] = [];
+  const bankTerms = getBankTerms(program);
   const minFinanceAmount = 0;
   const step = config.loanReductionStep;
   for (let fa = baseFinanceAmount - step; fa >= minFinanceAmount; fa -= step) {
     const newDP = input.price - fa;
     const newDPPct = input.price > 0 ? Math.round((newDP / input.price) * 100) : baseDownPaymentPct;
-    if (newDPPct >= program.minDownPaymentPercent && newDPPct <= program.maxDownPaymentPercent) {
+    if (newDPPct >= bankTerms.minDownPaymentPercent && newDPPct <= bankTerms.maxDownPaymentPercent) {
       candidates.push({
         months: baseMonths,
         downPaymentPercent: newDPPct,
         downPaymentAmount: newDP,
         financeAmount: fa,
         programId: program.id,
-        bankId: program.bankId,
+        bankId: bankTerms.bankId,
         calculationMethod: program.calculationMethod,
       });
     }
@@ -92,7 +115,8 @@ function generateDownPaymentIncreaseCandidates(
   config: OptimizerConfig
 ): CandidateRequest[] {
   const candidates: CandidateRequest[] = [];
-  const maxDP = program.maxDownPaymentPercent;
+  const bankTerms = getBankTerms(program);
+  const maxDP = bankTerms.maxDownPaymentPercent;
   for (let dp = baseDownPaymentPct + config.downPaymentStep; dp <= maxDP; dp += config.downPaymentStep) {
     const dpAmount = input.price * (dp / 100);
     candidates.push({
@@ -101,7 +125,7 @@ function generateDownPaymentIncreaseCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: program.id,
-      bankId: program.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: program.calculationMethod,
     });
   }
@@ -119,8 +143,9 @@ function generateProgramSwitchCandidates(
   const candidates: CandidateRequest[] = [];
   for (const p of allPrograms) {
     if (p.id === excludeProgramId || !p.active) continue;
-    const dp = clamp(baseDownPaymentPct, p.minDownPaymentPercent, p.maxDownPaymentPercent);
-    const months = clamp(baseMonths, p.minMonths, p.maxMonths);
+    const bankTerms = getBankTerms(p);
+    const dp = clamp(baseDownPaymentPct, bankTerms.minDownPaymentPercent, bankTerms.maxDownPaymentPercent);
+    const months = clamp(baseMonths, bankTerms.minMonths, bankTerms.maxMonths);
     const dpAmount = input.price * (dp / 100);
     candidates.push({
       months,
@@ -128,7 +153,7 @@ function generateProgramSwitchCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: p.id,
-      bankId: p.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: p.calculationMethod,
     });
   }
@@ -146,10 +171,11 @@ function generateBankSwitchCandidates(
   const candidates: CandidateRequest[] = [];
   const uniqueBanks = new Set<number>();
   for (const p of allPrograms) {
-    if (p.bankId === excludeBankId || !p.active || uniqueBanks.has(p.bankId)) continue;
-    uniqueBanks.add(p.bankId);
-    const dp = clamp(baseDownPaymentPct, p.minDownPaymentPercent, p.maxDownPaymentPercent);
-    const months = clamp(baseMonths, p.minMonths, p.maxMonths);
+    const bankTerms = getBankTerms(p);
+    if (bankTerms.bankId === excludeBankId || !p.active || uniqueBanks.has(bankTerms.bankId)) continue;
+    uniqueBanks.add(bankTerms.bankId);
+    const dp = clamp(baseDownPaymentPct, bankTerms.minDownPaymentPercent, bankTerms.maxDownPaymentPercent);
+    const months = clamp(baseMonths, bankTerms.minMonths, bankTerms.maxMonths);
     const dpAmount = input.price * (dp / 100);
     candidates.push({
       months,
@@ -157,7 +183,7 @@ function generateBankSwitchCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: p.id,
-      bankId: p.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: p.calculationMethod,
     });
   }
@@ -172,6 +198,7 @@ function generateMethodSwitchCandidates(
   config: OptimizerConfig
 ): CandidateRequest[] {
   const candidates: CandidateRequest[] = [];
+  const bankTerms = getBankTerms(program);
   const methods = ["reducing", "flat", "murabaha"];
   for (const method of methods) {
     if (method === program.calculationMethod) continue;
@@ -182,7 +209,7 @@ function generateMethodSwitchCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: program.id,
-      bankId: program.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: method,
     });
   }
@@ -200,8 +227,9 @@ function generateEmploymentCompatibleCandidates(
   for (const p of allPrograms) {
     if (!p.active) continue;
     if (p.salaryTransferRequired && !input.salary_transfer) continue;
-    const dp = clamp(baseDownPaymentPct, p.minDownPaymentPercent, p.maxDownPaymentPercent);
-    const months = clamp(baseMonths, p.minMonths, p.maxMonths);
+    const bankTerms = getBankTerms(p);
+    const dp = clamp(baseDownPaymentPct, bankTerms.minDownPaymentPercent, bankTerms.maxDownPaymentPercent);
+    const months = clamp(baseMonths, bankTerms.minMonths, bankTerms.maxMonths);
     const dpAmount = input.price * (dp / 100);
     candidates.push({
       months,
@@ -209,7 +237,7 @@ function generateEmploymentCompatibleCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: p.id,
-      bankId: p.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: p.calculationMethod,
     });
   }
@@ -227,8 +255,9 @@ function generateAgeCompatibleCandidates(
   for (const p of allPrograms) {
     if (!p.active) continue;
     if (input.age > p.maxCustomerAge) continue;
-    const dp = clamp(baseDownPaymentPct, p.minDownPaymentPercent, p.maxDownPaymentPercent);
-    const months = clamp(baseMonths, p.minMonths, p.maxMonths);
+    const bankTerms = getBankTerms(p);
+    const dp = clamp(baseDownPaymentPct, bankTerms.minDownPaymentPercent, bankTerms.maxDownPaymentPercent);
+    const months = clamp(baseMonths, bankTerms.minMonths, bankTerms.maxMonths);
     const dpAmount = input.price * (dp / 100);
     candidates.push({
       months,
@@ -236,7 +265,7 @@ function generateAgeCompatibleCandidates(
       downPaymentAmount: dpAmount,
       financeAmount: Math.max(0, input.price - dpAmount),
       programId: p.id,
-      bankId: p.bankId,
+      bankId: bankTerms.bankId,
       calculationMethod: p.calculationMethod,
     });
   }
