@@ -1,10 +1,9 @@
-// src/engine/evaluation/evaluateApplication.ts
-
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 import type { Program } from "../../shared/types/program.js";
 import type { EvaluationResult } from "../../shared/types/result.js";
 import type { EvaluationContext } from "../types/context.js";
 import type { Decision } from "../../shared/types/decision.js";
+import type { EmploymentType } from "../../shared/types/scoring.js";
 
 import { getRulesByProgram } from "../../services/getRules.js";
 
@@ -15,23 +14,31 @@ import { evaluateRisk } from "../scoring/riskScore.js";
 
 import { buildResult } from "../builders/result.builder.js";
 
+function mapJobType(jobType?: string): EmploymentType | undefined {
+    if (!jobType) return undefined;
+    const map: Record<string, EmploymentType> = {
+        government: 'government',
+        gov: 'government',
+        public: 'government',
+        private: 'unlisted_private',
+        listed: 'listed_private',
+        'listed_private': 'listed_private',
+        self_employed: 'self_employed',
+        self: 'self_employed',
+        freelance: 'self_employed',
+        retired: 'retired',
+    };
+    return map[jobType.toLowerCase()] ?? undefined;
+}
+
 export async function evaluateApplication(
     input: ApplicationInput,
     program: Program,
     tenantId: number
 ): Promise<EvaluationResult> {
 
-    // =========================
-    // 1. LOAD RULES
-    // =========================
-    const rules = await getRulesByProgram(
-        program.id,
-        tenantId
-    );
+    const rules = await getRulesByProgram(program.id, tenantId);
 
-    // =========================
-    // 2. CONTEXT
-    // =========================
     const ctx: EvaluationContext = {
         input,
         program,
@@ -40,26 +47,15 @@ export async function evaluateApplication(
         reasons: [],
     };
 
-    // =========================
-    // 3. POLICY ENGINE
-    // =========================
     const policyDecision = runPolicyEngine(ctx);
 
     if (policyDecision) {
-        return buildResult(
-            program.id,
-            policyDecision,
-            ctx
-        );
+        return buildResult(program.id, policyDecision, ctx);
     }
 
-    // =========================
-    // 4. ELIGIBILITY
-    // =========================
     const eligibility = checkEligibility(ctx);
 
     if (!eligibility.isEligible) {
-
         const decision: Decision = {
             type: "REJECT",
             reason: {
@@ -69,39 +65,23 @@ export async function evaluateApplication(
             },
         };
 
-        return buildResult(
-            program.id,
-            decision,
-            ctx
-        );
+        return buildResult(program.id, decision, ctx);
     }
 
-    // save calculated base dti
     ctx.baseDTI = eligibility.dti;
 
-    // =========================
-    // 5. RISK ANALYSIS
-    // =========================
+    const employmentType = mapJobType(input.job_type);
+
     const risk = evaluateRisk(
         input.age,
         input.salary,
-        eligibility.dti
+        eligibility.dti,
+        employmentType,
+        input.iScore
     );
 
-    // =========================
-    // 6. DECISION + MODIFIERS
-    // =========================
     let decision: Decision;
 
-    /**
-     * IMPORTANT:
-     * interestModifier is now stored
-     * as PERCENTAGE POINTS
-     *
-     * Example:
-     * 10 => +10%
-     * 25 => +25%
-     */
     let interestModifier = 0;
     let maxMonthsModifier = 0;
 
@@ -144,18 +124,14 @@ export async function evaluateApplication(
         };
     }
 
-    // =========================
-    // 7. FINAL RESULT
-    // =========================
     return {
-        ...buildResult(
-            program.id,
-            decision,
-            ctx
-        ),
+        ...buildResult(program.id, decision, ctx),
 
         interestModifier,
         maxMonthsModifier,
         calculationMethod: program.calculationMethod,
+        riskScore: risk.score,
+        riskLevel: risk.level,
+        riskFactors: risk.riskFactors,
     };
 }

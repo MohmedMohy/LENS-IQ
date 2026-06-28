@@ -6,7 +6,7 @@ import fastifyCookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import crypto from "node:crypto";
 
 process.on("unhandledRejection", (reason) => {
@@ -29,6 +29,10 @@ import { applicationsRoutes } from "./admin/applications/routes.js";
 import { evaluateRoutes } from "./routes/evaluate.js";
 import { publicApplyRoutes } from "./routes/public.apply.js";
 import { optimizeRoutes } from "./routes/optimize.js";
+import { financierRoutes } from "./financier/routes.js";
+import { evaluateRecommendationRoutes } from "./routes/engine/evaluateRecommendation.js";
+import { bankRequirementsRoutes } from "./routes/banks/requirements.js";
+import { bankDecisionRoutes } from "./routes/applications/bankDecision.js";
 import { usersRoutes } from "./admin/users/routes.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { auditRoutes } from "./admin/audit/routes.js";
@@ -52,7 +56,7 @@ function findFrontendDist(): string | null {
   return null;
 }
 const FRONTEND_DIST = findFrontendDist();
-const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard"];
+const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard", "/banks", "/applications", "/engine", "/assets"];
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -127,6 +131,16 @@ fastify.addHook("onRoute", (routeOptions) => {
       },
     };
   }
+  if (routeOptions.url === "/evaluate" && routeOptions.method === "POST") {
+    const prev = routeOptions.config || {};
+    routeOptions.config = {
+      ...prev,
+      rateLimit: {
+        max: 30,
+        timeWindow: "1 minute",
+      },
+    };
+  }
 });
 
 fastify.addHook("onRequest", async (request, reply) => {
@@ -141,13 +155,17 @@ fastify.setErrorHandler((error: FastifyError | Error, _request, reply) => {
   return sendError(reply, message, statusCode);
 });
 
-fastify.addHook("onSend", async (_request, reply, payload) => {
+const WIDGET_ORIGINS = allowedOrigins.filter(o => o !== "http://localhost:5173" && o !== "http://localhost:4000");
+const frameAncestors = WIDGET_ORIGINS.length > 0 ? WIDGET_ORIGINS.join(" ") : "'none'";
+
+fastify.addHook("onSend", async (request, reply, payload) => {
+  const isWidgetRequest = request.url?.startsWith("/evaluate") && request.headers["x-api-key"];
   reply.headers({
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
+    "X-Frame-Options": isWidgetRequest ? "ALLOW-FROM " + (WIDGET_ORIGINS[0] || "") : "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+    "Content-Security-Policy": `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; frame-ancestors ${frameAncestors}; base-uri 'self'`,
   });
   return payload;
 });
@@ -164,6 +182,10 @@ await dashboardRoutes(fastify);
 await auditRoutes(fastify);
 await evaluateRoutes(fastify);
 await optimizeRoutes(fastify);
+await financierRoutes(fastify);
+await evaluateRecommendationRoutes(fastify);
+await bankRequirementsRoutes(fastify);
+await bankDecisionRoutes(fastify);
 await publicApplyRoutes(fastify);
 
 fastify.get("/health", async () => {
@@ -179,17 +201,29 @@ if (FRONTEND_DIST) {
   try {
     await fastify.register(fastifyStatic, {
       root: FRONTEND_DIST,
-      prefix: "/",
-      wildcard: true,
+      prefix: "/assets/",
+      wildcard: false,
+      decorateReply: false,
     });
   } catch {
     fastify.log.warn("Frontend dist not found, skipping static serving");
   }
 }
 
+const INDEX_HTML = FRONTEND_DIST ? path.join(FRONTEND_DIST, "index.html") : null;
+let indexContent: string | null = null;
+
 fastify.setNotFoundHandler((request, reply) => {
   if (request.method === "GET" && !API_PREFIXES.some(p => request.url.startsWith(p))) {
-    return reply.sendFile("index.html");
+    if (INDEX_HTML) {
+      if (!indexContent) {
+        try { indexContent = readFileSync(INDEX_HTML, "utf-8"); } catch { /* ignore */ }
+      }
+      if (indexContent) {
+        return reply.type("text/html").send(indexContent);
+      }
+    }
+    return reply.status(404).send({ success: false, message: "Resource not found" });
   }
   return reply.status(404).send({ success: false, message: "Route not found" });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import Layout from "@/components/layout/Layout";
@@ -8,11 +9,14 @@ import Card from "@/components/ui/card/Card";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { applicationsApi } from "@/features/applications/api/Applications";
 import { evaluateApi } from "@/features/evaluate/api/evaluate.api";
-import type { Application, EvaluateResponse, Offer } from "@/types";
+import type { Application, EvaluateResponse, Offer, RankedOffer } from "@/types";
 import OfferComparison from "@/features/evaluate/components/OfferComparison";
 import Recommendations from "@/features/evaluate/components/Recommendations";
+import type { Recommendation, RecommendationAction } from "@/features/evaluate/components/Recommendations";
+import RecommendationModal from "@/features/evaluate/components/RecommendationModal";
 import ReasonList from "@/features/evaluate/components/ReasonList";
 import DtiMeter from "@/features/evaluate/components/DtiMeter";
+import { evaluateRecommendationApi, type EvaluateRecommendationResponse } from "@/features/evaluate/api/evaluateRecommendation.api";
 
 function getOverallScore(offers: Offer[]): number {
   if (offers.length === 0) return 0;
@@ -34,59 +38,62 @@ function getDecisionEmoji(score: number): string {
   return "●";
 }
 
-function generateRecommendations(result: EvaluateResponse) {
-  const recs: Array<{ title: string; description: string; impact: string; type: "positive" | "info" | "warning" }> = [];
+function generateRecommendations(result: EvaluateResponse, app?: Application | null): Recommendation[] {
+  const recs: Recommendation[] = [];
   const best = result.bestOffer;
   if (!best) return recs;
 
   if (best.status === "REJECTED" || best.riskLevel === "HIGH") {
+    const currentApp = app;
+    const price = currentApp?.price ?? 0;
+    const currentDown = currentApp?.requested_down_payment ?? best.downPayment;
+    if (price > 0) {
+      const currentPct = Math.round((currentDown / price) * 100);
+      const suggestedPct = Math.min(currentPct + 10, 50);
+      recs.push({
+        title: "زيادة الدفعة المقدمة",
+        description: `رفع الدفعة من ${currentPct}% إلى ${suggestedPct}% يقلل مبلغ التمويل ويزيد فرص الموافقة.`,
+        impact: "قد يحسن النتيجة بنسبة 15-20%",
+        type: "warning",
+        action: { type: "INCREASE_DOWN_PAYMENT", pct: suggestedPct },
+      });
+    }
     recs.push({
-      title: "Increase Down Payment",
-      description: "Raising the down payment by 10% could reduce the financing amount and improve approval odds.",
-      impact: "Could improve score by 15-20%",
+      title: "تمديد مدة التمويل",
+      description: "زيادة مدة التمويل تقلل القسط الشهري وتحسن نسبة DTI.",
+      impact: "قد يحسن النتيجة بنسبة 10-15%",
       type: "warning",
-    });
-    recs.push({
-      title: "Add a Guarantor",
-      description: "Adding a guarantor with strong credit history significantly reduces lender risk.",
-      impact: "Could improve score by 25-30%",
-      type: "warning",
+      action: { type: "EXTEND_DURATION", months: Math.min(best.months + 24, 96) },
     });
   }
 
-  if (best.dti > 40) {
+  if (best.status === "APPROVED" || best.riskLevel === "LOW" || best.riskLevel === "MEDIUM") {
     recs.push({
-      title: "Reduce Loan Term",
-      description: "Shortening the repayment period from 60 to 48 months reduces total interest and improves DTI.",
-      impact: "Could improve score by 10-15%",
+      title: "تقصير مدة التمويل",
+      description: `تقليل المدة من ${best.months} إلى ${Math.max(best.months - 24, 36)} شهراً يخفض التكلفة الإجمالية.`,
+      impact: "يخفض التكلفة الإجمالية بنسبة 15-20%",
       type: "info",
-    });
-  }
-
-  if (best.months > 48) {
-    recs.push({
-      title: "Shorter Financing Period",
-      description: `Reducing term from ${best.months} to 48 months lowers the bank's risk exposure.`,
-      impact: "Could improve score by 8-12%",
-      type: "info",
+      action: { type: "REDUCE_DURATION", months: Math.max(best.months - 24, 36) },
     });
   }
 
   if (best.status === "APPROVED" && best.riskLevel === "LOW") {
     recs.push({
-      title: "Proceed with Application",
-      description: "This profile has strong approval potential. Submit to the financing company now.",
-      impact: "High chance of acceptance",
+      title: "إرسال للممول",
+      description: "الملف الائتماني قوي وجاهز للتقديم. أرسل طلب التمويل الآن.",
+      impact: "فرصة قبول عالية",
       type: "positive",
+      action: { type: "SUBMIT_FINANCIER" },
     });
   }
 
   if (recs.length === 0) {
     recs.push({
-      title: "Profile Looks Good",
-      description: "The current financing profile meets the criteria. Consider submitting for approval.",
-      impact: "Ready for submission",
+      title: "الملف الائتماني جيد",
+      description: "البيانات الحالية تستوفي المعايير. يمكن البدء في إجراءات التمويل.",
+      impact: "جاهز للتقديم",
       type: "positive",
+      action: { type: "NONE" },
     });
   }
 
@@ -157,6 +164,7 @@ function ApplicationRow({
 
 export default function EvaluatePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loadingApps, setLoadingApps] = useState(true);
   const [appsError, setAppsError] = useState<string | null>(null);
@@ -164,7 +172,10 @@ export default function EvaluatePage() {
   const [result, setResult] = useState<EvaluateResponse | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [applyingRecommendation, setApplyingRecommendation] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [recommendationResult, setRecommendationResult] = useState<EvaluateRecommendationResponse | null>(null);
+  const [showRecModal, setShowRecModal] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -203,6 +214,72 @@ export default function EvaluatePage() {
     }
   }, [selectedId, applications]);
 
+  const selectedApp = applications.find((a) => a.id === selectedId) ?? null;
+
+  const handleApplyRecommendation = useCallback(async (action: RecommendationAction) => {
+    const app = applications.find((a) => a.id === selectedId) ?? null;
+    if (!app || !result?.bestOffer) return;
+
+    if (action.type === "SUBMIT_FINANCIER") {
+      navigate(`/send-to-financier/${selectedId}`);
+      return;
+    }
+
+    if (action.type === "NONE") return;
+
+    setApplyingRecommendation(true);
+    try {
+      const suggestedParams: { tenor?: number; downPaymentPct?: number } = {};
+      let recType: "SHORTEN_TENOR" | "INCREASE_DOWN_PAYMENT" = "INCREASE_DOWN_PAYMENT";
+
+      if (action.type === "INCREASE_DOWN_PAYMENT") {
+        recType = "INCREASE_DOWN_PAYMENT";
+        suggestedParams.downPaymentPct = action.pct;
+      } else if (action.type === "EXTEND_DURATION") {
+        recType = "SHORTEN_TENOR";
+        suggestedParams.tenor = action.months;
+      } else if (action.type === "REDUCE_DURATION") {
+        recType = "SHORTEN_TENOR";
+        suggestedParams.tenor = action.months;
+      } else {
+        toast.error("نوع التوصية غير مدعوم");
+        return;
+      }
+
+      const evalResult = await evaluateRecommendationApi.evaluate({
+        applicationId: selectedId!,
+        recommendationType: recType,
+        suggestedParams,
+      });
+
+      setRecommendationResult(evalResult);
+      setShowRecModal(true);
+    } catch {
+      toast.error("فشل تقييم التوصية");
+    } finally {
+      setApplyingRecommendation(false);
+    }
+  }, [applications, selectedId, result, navigate]);
+
+  const handleModalApply = useCallback((offer: RankedOffer) => {
+    if (result) {
+      const updatedOffers = result.offers.map(o =>
+        o.programId === offer.programId ? offer : o
+      );
+      if (!updatedOffers.find(o => o.programId === offer.programId)) {
+        updatedOffers.push(offer);
+      }
+      setResult({
+        ...result,
+        bestOffer: offer,
+        offers: updatedOffers,
+      });
+    }
+    setShowRecModal(false);
+    setRecommendationResult(null);
+    toast.success("تم تطبيق العرض");
+  }, [result]);
+
   const overallScore = result ? getOverallScore(result.offers) : 0;
   const scoreColor = getScoreColor(overallScore);
   const scoreLabel = overallScore >= 70
@@ -213,8 +290,7 @@ export default function EvaluatePage() {
   const approved = result?.offers.filter((o) => o.status === "APPROVED") ?? [];
   const conditional = result?.offers.filter((o) => o.status === "CONDITIONAL") ?? [];
   const rejected = result?.offers.filter((o) => o.status === "REJECTED") ?? [];
-  const selectedApp = applications.find((a) => a.id === selectedId) ?? null;
-  const recommendations = result ? generateRecommendations(result) : [];
+  const recommendations = result ? generateRecommendations(result, selectedApp) : [];
 
   return (
     <Layout>
@@ -243,9 +319,9 @@ export default function EvaluatePage() {
             )}
             {!loadingApps && applications.length > 0 && (
               <div className="space-y-3">
-                {applications.map((app) => (
+                {applications.map((app, idx) => (
                   <ApplicationRow
-                    key={app.id}
+                    key={`${app.id}-${idx}`}
                     app={app}
                     selected={selectedId === app.id}
                     onSelect={() => {
@@ -495,7 +571,10 @@ export default function EvaluatePage() {
                 <OfferComparison offers={result.offers} bestOffer={result.bestOffer} />
 
                 {recommendations.length > 0 && (
-                  <Recommendations recommendations={recommendations} />
+                  <Recommendations
+                    recommendations={recommendations}
+                    onApply={applyingRecommendation ? undefined : handleApplyRecommendation}
+                  />
                 )}
 
                 <motion.div
@@ -536,7 +615,7 @@ export default function EvaluatePage() {
                     className="glass-btn glass-btn-primary rounded-xl px-6 py-3 text-sm font-semibold"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => toast.success("Submitted to financing company!")}
+                    onClick={() => navigate(`/send-to-financier/${selectedId}`)}
                     style={{
                       background: "linear-gradient(135deg, var(--success), #059669)",
                       boxShadow: "0 2px 16px rgba(16,185,129,0.3)",
@@ -578,6 +657,15 @@ export default function EvaluatePage() {
           </AnimatePresence>
         </div>
       </div>
+
+      {recommendationResult && (
+        <RecommendationModal
+          isOpen={showRecModal}
+          onClose={() => { setShowRecModal(false); setRecommendationResult(null); }}
+          result={recommendationResult}
+          onApply={handleModalApply}
+        />
+      )}
     </Layout>
   );
 }

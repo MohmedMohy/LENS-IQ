@@ -76,7 +76,7 @@ export default function DecisionCard({ result, index = 0 }: Props) {
                   const imp = impactColors[r.impact];
                   return (
                     <motion.div
-                      key={i}
+                      key={`${r.type}-${r.message}`}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 + i * 0.05 }}

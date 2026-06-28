@@ -19,6 +19,13 @@ export type Offer = {
   approvalProbability: number;
   programScore?: number;
   reasons?: Array<{ type: string; message: string; impact: string }>;
+  effectiveAnnualRate?: number;
+  tenor?: number;
+  downPaymentPct?: number;
+  downPaymentAmount?: number;
+  loanAmount?: number;
+  LTV?: number;
+  calculationMethod?: string;
 };
 
 export type OptimizationSuggestion = {

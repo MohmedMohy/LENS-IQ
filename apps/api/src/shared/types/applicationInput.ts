@@ -12,4 +12,7 @@ export interface ApplicationInput {
     job_type?: string;
     car_age?: number;
     salary_transfer?: boolean;
+    iScore?: number;
+    carYear?: number;
+    vehicleCondition?: 'new' | 'used';
 }

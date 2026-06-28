@@ -67,7 +67,14 @@ export function validateEnv(): void {
     }
 
     const encryptionKey = process.env.ENCRYPTION_KEY;
-    if (encryptionKey) {
+    if (process.env.NODE_ENV === "production") {
+        if (!encryptionKey) {
+            throw new Error("ENCRYPTION_KEY is required in production. Generate one: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
+        }
+        if (!/^[0-9a-f]{64}$/i.test(encryptionKey)) {
+            throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes).");
+        }
+    } else if (encryptionKey) {
         if (!/^[0-9a-f]{64}$/i.test(encryptionKey)) {
             throw new Error("ENCRYPTION_KEY must be a 64-character hex string (32 bytes).");
         }

@@ -324,3 +324,21 @@ model Offer {
   @@index([bank_id])
   @@map("offers")
 }
+ 
+model FinancierSubmission {
+  id              Int      @id @default(autoincrement())
+  tenant_id       Int
+  application_id  Int
+  offer_id        Int?
+  bank_name       String
+  program_name    String
+  status          String   @default("PENDING")
+  financier_notes String?
+  submitted_at    DateTime @default(now())
+  decided_at      DateTime?
+
+  @@index([tenant_id])
+  @@index([application_id])
+  @@index([tenant_id, application_id])
+  @@map("financier_submissions")
+}

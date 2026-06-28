@@ -19,6 +19,8 @@ const menuItems = [
   { nameKey: "sidebar.applications", path: routePaths.applications, icon: "▤" },
   { divider: true, labelKey: "sidebar.engine" },
   { nameKey: "sidebar.evaluate", path: routePaths.evaluate, icon: "◆" },
+  { divider: true, labelKey: "sidebar.developer" },
+  { nameKey: "sidebar.widgetPreview", path: routePaths.widgetPreview, icon: "◈" },
 ];
 
 type MenuItem =
@@ -44,6 +46,9 @@ function NavContent({
     }
     if ("path" in item && item.path === routePaths.audit) {
       return role === "ADMIN" || role === "MANAGER";
+    }
+    if ("path" in item && item.path === routePaths.widgetPreview) {
+      return role === "ADMIN";
     }
     return true;
   });

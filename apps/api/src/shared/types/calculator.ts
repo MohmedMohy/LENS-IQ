@@ -1,6 +1,12 @@
-// src/types/calculator.ts
-
 export type CalculationMethod = "reducing" | "flat" | "murabaha";
+
+export type AmortizationRow = {
+    month: number;
+    payment: number;
+    principal: number;
+    interest: number;
+    balance: number;
+};
 
 export type CalculationInput = {
     loanAmount: number;
@@ -24,4 +30,6 @@ export type CalculationResult = {
     totalFinanceCostPercent?: number;
     adminFees?: number;
     balloonFinalPayment?: number;
+    effectiveAnnualRate?: number;
+    amortizationSchedule?: AmortizationRow[];
 };

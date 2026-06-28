@@ -161,7 +161,7 @@ function ApplicationForm({
                 <div className="flex flex-col gap-1">
                     <label className="text-sm font-semibold text-slate-700">{t("applications.duration")} *</label>
                     <select {...register("requested_months")} className={SELECT_CLS}>
-                        {[12, 24, 36, 48, 60, 72, 84].map((m) => (
+                        {([36, 48, 60, 72, 84, 96]).map((m) => (
                             <option key={m} value={m}>{t("applications.months", { months: m })}</option>
                         ))}
                     </select>
@@ -479,9 +479,9 @@ export default function ApplicationsPage() {
                     <p className="text-sm font-medium text-slate-500">
                         {t("common.results")}: {filtered.length}
                     </p>
-                    {filtered.map((app) => (
+                    {filtered.map((app, idx) => (
                         <ApplicationCard
-                            key={app.id}
+                            key={`${app.id}-${idx}`}
                             app={app}
                             updatingId={updatingId}
                             onStatusChange={(id, status) =>

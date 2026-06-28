@@ -31,7 +31,7 @@ export async function createApplication(data: {
 export async function getApplications(tenantId: number) {
     const result = await db.query(
         `SELECT a.*, 
-            c.name AS customer_name, c.salary, c.job_type,
+            c.name AS customer_name, c.salary, c.job_type, c.phone, c.current_liabilities,
             v.brand, v.model, v.price, v.manufacturing_year, v.condition
      FROM applications a
      JOIN customers c ON a.customer_id = c.id
@@ -40,7 +40,11 @@ export async function getApplications(tenantId: number) {
      ORDER BY a.id DESC`,
         [tenantId]
     );
-    return result.rows;
+    const rows = result.rows;
+    for (const row of rows) {
+        try { if (row.phone) row.phone = decrypt(row.phone); } catch { /* ignore */ }
+    }
+    return rows;
 }
 
 export async function getApplicationById(id: number, tenantId: number) {

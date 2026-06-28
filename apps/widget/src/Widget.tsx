@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.lensiq.app";
 
 type OfferDisplay = {
+  programId: number;
   programName?: string;
   status: string;
   installment: number;
@@ -80,9 +81,9 @@ export function Widget() {
         </p>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {offers.slice(0, 3).map((offer, i) => (
+        {offers.slice(0, 3).map((offer) => (
           <div
-            key={i}
+            key={offer.programId}
             style={{
               padding: 12,
               borderRadius: 8,
@@ -97,7 +98,7 @@ export function Widget() {
                 marginBottom: 4,
               }}
             >
-              <strong style={{ fontSize: 14 }}>{offer.programName || `Program #${i + 1}`}</strong>
+              <strong style={{ fontSize: 14 }}>{offer.programName || `Program #${offer.programId}`}</strong>
               <span
                 style={{
                   fontSize: 12,

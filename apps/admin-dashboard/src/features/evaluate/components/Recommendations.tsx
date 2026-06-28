@@ -1,15 +1,25 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
-type Recommendation = {
+export type RecommendationAction =
+  | { type: "INCREASE_DOWN_PAYMENT"; pct: number }
+  | { type: "EXTEND_DURATION"; months: number }
+  | { type: "REDUCE_DURATION"; months: number }
+  | { type: "SWITCH_PROGRAM"; programId: number }
+  | { type: "SUBMIT_FINANCIER" }
+  | { type: "NONE" };
+
+export type Recommendation = {
   title: string;
   description: string;
   impact: string;
   type: "positive" | "info" | "warning";
+  action: RecommendationAction;
 };
 
 type Props = {
   recommendations: Recommendation[];
+  onApply?: (action: RecommendationAction) => void;
 };
 
 const typeConfig = {
@@ -18,7 +28,7 @@ const typeConfig = {
   warning: { icon: "↓", color: "var(--warning)" },
 };
 
-export default function Recommendations({ recommendations }: Props) {
+export default function Recommendations({ recommendations, onApply }: Props) {
   const { t } = useTranslation();
 
   if (recommendations.length === 0) return null;
@@ -36,13 +46,22 @@ export default function Recommendations({ recommendations }: Props) {
       <div className="grid gap-3 md:grid-cols-3">
         {recommendations.map((rec, i) => {
           const tc = typeConfig[rec.type];
+          const isClickable = rec.action.type !== "NONE" && !!onApply;
           return (
-            <motion.div
-              key={i}
+            <motion.button
+              key={rec.title}
+              type="button"
+              onClick={() => {
+                if (isClickable) onApply(rec.action);
+              }}
+              disabled={!isClickable}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 + i * 0.08 }}
-              className="glass-card p-4"
+              className={`glass-card p-4 text-start ${isClickable ? "cursor-pointer hover:scale-[1.02] active:scale-[0.98]" : "cursor-default"}`}
+              style={{ transition: "transform 0.15s" }}
+              whileHover={isClickable ? { scale: 1.02 } : {}}
+              whileTap={isClickable ? { scale: 0.98 } : {}}
             >
               <div className="mb-2 flex items-center gap-2">
                 <span
@@ -61,7 +80,7 @@ export default function Recommendations({ recommendations }: Props) {
               <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: tc.color }}>
                 {rec.impact}
               </p>
-            </motion.div>
+            </motion.button>
           );
         })}
       </div>

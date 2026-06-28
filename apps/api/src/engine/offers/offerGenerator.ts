@@ -2,16 +2,33 @@ import type { Program } from "../../shared/types/program.js";
 import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 import type { EvaluationResult, EvaluationStatus } from "../../shared/types/result.js";
 import type { Offer } from "../../shared/types/offer.js";
+import type { EmploymentType } from "../../shared/types/scoring.js";
 
 import { calculateLoan } from "../pricing/loanCalculator.js";
 import { analyze } from "../scoring/scoring.js";
-
-const MAX_ALLOWED_DTI = 65;
+import { MAX_DTI_STANDARD, MAX_DTI_GOVERNMENT } from "../scoring/dti.js";
 
 export type GenerateOfferOverrides = {
     overrideMonths?: number;
     overrideDownPaymentPercent?: number;
 };
+
+function mapJobType(jobType?: string): EmploymentType | undefined {
+    if (!jobType) return undefined;
+    const map: Record<string, EmploymentType> = {
+        government: 'government',
+        gov: 'government',
+        public: 'government',
+        private: 'unlisted_private',
+        listed: 'listed_private',
+        listed_private: 'listed_private',
+        self_employed: 'self_employed',
+        self: 'self_employed',
+        freelance: 'self_employed',
+        retired: 'retired',
+    };
+    return map[jobType.toLowerCase()] ?? undefined;
+}
 
 function computeApprovalProbability(score: {
     riskScore: number;
@@ -36,6 +53,9 @@ export function generateOffer(
     overrides?: GenerateOfferOverrides
 ): Offer {
 
+    const employmentType = mapJobType(input.job_type);
+    const maxAllowedDTI = employmentType === 'government' ? MAX_DTI_GOVERNMENT : MAX_DTI_STANDARD;
+
     if (evaluation.status === "REJECTED") {
         return {
             programId: program.id,
@@ -57,6 +77,13 @@ export function generateOffer(
                 "REJECTED"
             ),
             reasons: evaluation.reasons,
+            effectiveAnnualRate: 0,
+            tenor: overrides?.overrideMonths ?? program.maxMonths,
+            downPaymentPct: overrides?.overrideDownPaymentPercent ?? program.minDownPaymentPercent,
+            downPaymentAmount: 0,
+            loanAmount: 0,
+            LTV: 0,
+            calculationMethod: program.calculationMethod,
         };
     }
 
@@ -100,6 +127,13 @@ export function generateOffer(
             affordabilityScore: 100,
             approvalProbability: 99,
             reasons: [{ type: "SYSTEM", message: "Full cash purchase — no financing needed", impact: "LOW" }],
+            effectiveAnnualRate: 0,
+            tenor: finalMonths,
+            downPaymentPct: downPaymentPercent,
+            downPaymentAmount: actualDownPayment,
+            loanAmount: 0,
+            LTV: 0,
+            calculationMethod: program.calculationMethod,
         };
     }
 
@@ -124,6 +158,8 @@ export function generateOffer(
         salary: input.salary,
         installment: calc.installment,
         current_liabilities: input.current_liabilities,
+        employmentType,
+        iScore: input.iScore,
     });
 
     let finalStatus: EvaluationStatus =
@@ -133,16 +169,18 @@ export function generateOffer(
 
     const finalReasons = [...evaluation.reasons];
 
-    if (finalScore.dti > MAX_ALLOWED_DTI) {
+    if (finalScore.dti > maxAllowedDTI) {
         finalStatus = "REJECTED";
         finalReasons.push({
             type: "RISK",
-            message: `Final DTI (${finalScore.dti}%) exceeds max limit (${MAX_ALLOWED_DTI}%)`,
+            message: `Final DTI (${finalScore.dti}%) exceeds max limit (${maxAllowedDTI}%)`,
             impact: "HIGH",
         });
     }
 
     const approvalProbability = computeApprovalProbability(finalScore, finalStatus);
+
+    const LTV = input.price > 0 ? Math.round((loanAmount / input.price) * 100) : 0;
 
     return {
         programId: program.id,
@@ -161,5 +199,12 @@ export function generateOffer(
         affordabilityScore: finalScore.affordabilityScore,
         approvalProbability,
         reasons: finalReasons,
+        effectiveAnnualRate: calc.effectiveAnnualRate ?? calc.effectiveRate,
+        tenor: finalMonths,
+        downPaymentPct: downPaymentPercent,
+        downPaymentAmount: actualDownPayment,
+        loanAmount,
+        LTV,
+        calculationMethod: calcMethod,
     };
 }

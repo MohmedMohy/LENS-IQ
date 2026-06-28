@@ -1,37 +1,22 @@
 import type { EvaluationContext } from "../types/context.js";
-import { calculateDTI } from "../scoring/dti.js";
-/**
- * =========================
- * Eligibility Layer (PURE CHECK)
- * =========================
- * - NO decision making
- * - NO buildResult
- * - ONLY computes risk metric
- * - returns signal only
- */
+import { calculateDTI, ELIGIBILITY_CEILING } from "../scoring/dti.js";
+
 export function checkEligibility(
     ctx: EvaluationContext
-): { dti: number; isEligible: boolean } {
+): { dti: number; isEligible: boolean; status: string } {
 
-    // =========================
-    // 1. BASE DTI CALCULATION
-    // =========================
-    const dti = calculateDTI(
+    const dtiResult = calculateDTI(
         ctx.input.salary,
         0,
-        ctx.input.current_liabilities
+        ctx.input.current_liabilities,
+        (ctx.input.job_type as any) ?? undefined
     );
 
-    // =========================
-    // 2. HARD THRESHOLD CHECK
-    // =========================
-    const isEligible = dti <= 80;
+    const isEligible = dtiResult.status !== 'exceeds_ceiling';
 
-    // =========================
-    // 3. RETURN SIGNAL ONLY
-    // =========================
     return {
-        dti,
+        dti: dtiResult.value,
         isEligible,
+        status: dtiResult.status,
     };
 }

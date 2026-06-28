@@ -156,6 +156,8 @@ export type Application = {
     customer_name: string;
     salary: number;
     job_type: JobType;
+    phone: string;
+    current_liabilities?: number;
     brand: string;
     model: string;
     price: number;
@@ -214,6 +216,11 @@ export type Offer = {
     affordabilityScore: number;
     approvalProbability?: number;
     reasons: Reason[];
+};
+
+export type RankedOffer = Offer & {
+  programScore: number;
+  rank: number;
 };
 
 export type EvaluateResponse = {

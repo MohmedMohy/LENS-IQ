@@ -66,7 +66,7 @@ function suggestDuration(
     input: ApplicationInput,
     programs: Program[],
 ): OptimizationSuggestion | null {
-    const longer = [60, 72, 84].filter((m) => m > current);
+    const longer = [72, 84, 96].filter((m) => m > current);
     if (longer.length === 0) return null;
     const suggested = longer[0];
     const increase = Math.round((suggested - current) / 12 * 5);

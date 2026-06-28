@@ -13,12 +13,15 @@ const BanksPage = lazy(() => import("@/features/banks/pages/BanksPage"));
 const ProgramsPage = lazy(() => import("@/features/programs/pages/ProgramsPage"));
 const RulesPage = lazy(() => import("@/features/rules/pages/RulesPage"));
 const EvaluatePage = lazy(() => import("@/features/evaluate/pages/EvaluatePage"));
+const WidgetPreview = lazy(() => import("@/features/widget/pages/WidgetPreview"));
 const ProfilePage = lazy(() => import("@/features/profile/pages/ProfilePage"));
 const CustomersPage = lazy(() => import("@/features/Customers/pages/Customerspage"));
 const ApplicationsPage = lazy(() => import("@/features/applications/pages/Applicationspage"));
 const VehiclesPage = lazy(() => import("@/features/Vehicles/pages/Vehiclespage"));
 const UsersPage = lazy(() => import("@/features/users/pages/UsersPage"));
 const AuditPage = lazy(() => import("@/features/audit/pages/AuditPage"));
+const SendToFinancierPage = lazy(() => import("@/features/sendToFinancier/pages/SendToFinancierPage"));
+const BankRequirementsPage = lazy(() => import("@/features/bankRequirements/pages/BankRequirementsPage"));
 
 function Loading() {
   return (
@@ -36,13 +39,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    authApi.me()
-      .then((tenant) => {
-        if (!cancelled) setSession(tenant as unknown as Tenant);
-      })
-      .catch(() => {
+
+    const init = async () => {
+      try {
+        const result = await authApi.refresh();
+        if (!cancelled) {
+          setSession(result.tenant, result.accessToken);
+        }
+      } catch {
         if (!cancelled) logout();
-      });
+      }
+    };
+
+    void init();
     return () => { cancelled = true; };
   }, [setSession, logout]);
 
@@ -74,6 +83,9 @@ export default function AppRouter() {
             <Route path={routePaths.programs} element={<ProgramsPage />} />
             <Route path={routePaths.rules} element={<RulesPage />} />
             <Route path={routePaths.evaluate} element={<EvaluatePage />} />
+            <Route path={routePaths.sendToFinancier} element={<SendToFinancierPage />} />
+            <Route path={routePaths.bankRequirements} element={<BankRequirementsPage />} />
+            <Route path={routePaths.widgetPreview} element={<WidgetPreview />} />
             <Route path={routePaths.profile} element={<ProfilePage />} />
             <Route path={routePaths.customers} element={<CustomersPage />} />
             <Route path={routePaths.applications} element={<ApplicationsPage />} />

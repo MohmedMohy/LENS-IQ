@@ -17,6 +17,8 @@
     "applications": "Applications",
     "engine": "Engine",
     "evaluate": "Evaluate",
+    "developer": "Developer",
+    "widgetPreview": "Widget Preview",
     "logout": "Logout",
     "adminPanel": "Admin Panel"
   },

@@ -4,24 +4,22 @@ import { calculateDTI } from "./dti.js";
 import { evaluateRisk } from "./riskScore.js";
 import { calculateAffordability } from "./affordability.js";
 
-/**
- * Main scoring pipeline
- * - deterministic
- * - composable
- * - no side effects
- */
 export function analyze(input: ScoringInput): ScoreResult {
-
-    const dti = calculateDTI(
+    const dtiResult = calculateDTI(
         input.salary,
         input.installment,
-        input.current_liabilities
+        input.current_liabilities,
+        input.employmentType
     );
+
+    const dti = dtiResult.value;
 
     const risk = evaluateRisk(
         input.age,
         input.salary,
-        dti
+        dti,
+        input.employmentType,
+        input.iScore
     );
 
     const affordabilityScore = calculateAffordability(dti);
@@ -31,5 +29,6 @@ export function analyze(input: ScoringInput): ScoreResult {
         riskScore: risk.score,
         riskLevel: risk.level,
         affordabilityScore,
+        riskFactors: risk.riskFactors,
     };
 }
