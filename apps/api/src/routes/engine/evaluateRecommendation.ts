@@ -9,7 +9,7 @@ import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 
 const evaluateRecommendationSchema = z.object({
     applicationId: z.number().int().positive(),
-    recommendationType: z.enum(["SHORTEN_TENOR", "INCREASE_DOWN_PAYMENT", "SWITCH_METHOD", "BEST_BANK_ALTERNATIVE"]),
+    recommendationType: z.enum(["SHORTEN_TENOR", "EXTEND_TENOR", "INCREASE_DOWN_PAYMENT", "SWITCH_METHOD", "BEST_BANK_ALTERNATIVE"]),
     suggestedParams: z.object({
         tenor: z.number().int().positive().optional(),
         downPaymentPct: z.number().min(0).max(100).optional(),
@@ -71,9 +71,14 @@ export async function evaluateRecommendationRoutes(fastify: FastifyInstance) {
                 const originalBest = rankedOriginal[0] ?? null;
 
                 const suggestedInput: ApplicationInput = { ...baseInput };
+                let suggestedTenors: number[] | undefined;
 
                 if (body.recommendationType === "SHORTEN_TENOR" && body.suggestedParams.tenor) {
                     suggestedInput.requestedDownPayment = baseInput.price * 0.25;
+                }
+
+                if (body.recommendationType === "EXTEND_TENOR" && body.suggestedParams.tenor) {
+                    suggestedTenors = [body.suggestedParams.tenor];
                 }
 
                 if (body.recommendationType === "INCREASE_DOWN_PAYMENT" && body.suggestedParams.downPaymentPct) {
@@ -87,7 +92,7 @@ export async function evaluateRecommendationRoutes(fastify: FastifyInstance) {
                     }
                 }
 
-                let suggestedResult = await compareOffersDetailed(suggestedInput, programs, tenantId);
+                let suggestedResult = await compareOffersDetailed(suggestedInput, programs, tenantId, suggestedTenors);
 
                 if (body.recommendationType === "SWITCH_METHOD" && body.suggestedParams.method) {
                     const switchPrograms = programs.filter(p => p.calculationMethod === body.suggestedParams.method);
@@ -125,6 +130,11 @@ export async function evaluateRecommendationRoutes(fastify: FastifyInstance) {
                     totalSaving = Math.max(0, originalTotal - suggestedTotal);
                     dtiChange = suggestedDTI - originalDTI;
                     approvalChance = suggestedApproval - originalApproval;
+                } else if (body.recommendationType === "EXTEND_TENOR") {
+                    monthlySaving = Math.max(0, originalMonthly - suggestedMonthly);
+                    totalSaving = 0;
+                    dtiChange = suggestedDTI - originalDTI;
+                    approvalChance = suggestedApproval - originalApproval;
                 } else if (body.recommendationType === "SWITCH_METHOD") {
                     totalSaving = Math.max(0, originalTotal - suggestedTotal);
                     monthlySaving = Math.max(0, originalMonthly - suggestedMonthly);
@@ -139,6 +149,9 @@ export async function evaluateRecommendationRoutes(fastify: FastifyInstance) {
                     SHORTEN_TENOR: body.suggestedParams.tenor
                         ? `تقليل المدة لـ ${body.suggestedParams.tenor} شهر يوفر لك ${totalSaving.toLocaleString("en-EG", { maximumFractionDigits: 0 })} جنيه إجمالاً`
                         : "تقليل مدة التمويل يخفض التكلفة الإجمالية",
+                    EXTEND_TENOR: body.suggestedParams.tenor
+                        ? `تمديد المدة لـ ${body.suggestedParams.tenor} شهر يخفض القسط الشهري لـ ${suggestedMonthly.toLocaleString("en-EG", { maximumFractionDigits: 0 })} جنيه`
+                        : "تمديد مدة التمويل يخفض القسط الشهري",
                     INCREASE_DOWN_PAYMENT: body.suggestedParams.downPaymentPct
                         ? `رفع الدفعة الأولى لـ ${body.suggestedParams.downPaymentPct}% يخفض القسط لـ ${suggestedMonthly.toLocaleString("en-EG", { maximumFractionDigits: 0 })} جنيه ويحسن DTI لـ ${suggestedDTI}%`
                         : "زيادة الدفعة الأولى تحسن شروط التمويل",

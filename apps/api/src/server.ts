@@ -33,6 +33,7 @@ import { financierRoutes } from "./financier/routes.js";
 import { evaluateRecommendationRoutes } from "./routes/engine/evaluateRecommendation.js";
 import { bankRequirementsRoutes } from "./routes/banks/requirements.js";
 import { bankDecisionRoutes } from "./routes/applications/bankDecision.js";
+import { applicationFormRoutes } from "./routes/applicationPdf.js";
 import { usersRoutes } from "./admin/users/routes.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { auditRoutes } from "./admin/audit/routes.js";
@@ -56,7 +57,7 @@ function findFrontendDist(): string | null {
   return null;
 }
 const FRONTEND_DIST = findFrontendDist();
-const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard", "/banks", "/applications", "/engine", "/assets"];
+const API_PREFIXES = ["/auth", "/admin", "/evaluate", "/optimize", "/public", "/health", "/me", "/dashboard", "/banks", "/applications", "/engine", "/assets", "/application"];
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -187,6 +188,7 @@ await evaluateRecommendationRoutes(fastify);
 await bankRequirementsRoutes(fastify);
 await bankDecisionRoutes(fastify);
 await publicApplyRoutes(fastify);
+await applicationFormRoutes(fastify);
 
 fastify.get("/health", async () => {
   try {

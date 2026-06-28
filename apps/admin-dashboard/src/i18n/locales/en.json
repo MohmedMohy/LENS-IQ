@@ -241,7 +241,30 @@
     "createError": "Could not add rule.",
     "deleteError": "Could not delete rule."
   },
-  "evaluate": {
+    "sendToFinancier": {
+      "title": "Send to Financier",
+      "description": "Submit financing application to the bank",
+      "customerInfo": "Customer & Vehicle Info",
+      "offerDetails": "Sent Financing Offer",
+      "requiredDocs": "Bank Requirements — Required Documents",
+      "bankDecision": "Bank Decision",
+      "confirmApproval": "Confirm Bank Approval",
+      "confirmRejection": "Record Bank Rejection",
+      "financierNotes": "Bank Notes",
+      "submitToFinancier": "Submit to Financier",
+      "contactWhatsApp": "Contact Customer via WhatsApp",
+      "backToEvaluate": "Back to Evaluation",
+      "financingSummary": "Financing Summary",
+      "submitted": "Application submitted to financier successfully",
+      "approved": "✅ Approved",
+      "rejected": "❌ Rejected",
+      "pending": "⏳ Under Review",
+      "applicationStatus": "Application Status",
+      "approveApplication": "Approve Application",
+      "rejectApplication": "Reject Application",
+      "viewForm": "Financing Application Form"
+    },
+    "evaluate": {
     "title": "Credit Evaluation",
     "selectApplication": "Select an application...",
     "selectAppBtn": "Select Application",

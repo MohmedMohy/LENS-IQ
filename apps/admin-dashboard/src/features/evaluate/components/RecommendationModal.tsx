@@ -106,7 +106,9 @@ export default function RecommendationModal({ isOpen, onClose, result, onApply }
                           ? `توفير ${formatNumber(improvement.totalSaving)} جنيه في إجمالي التكلفة`
                           : recommendation.type === "INCREASE_DOWN_PAYMENT"
                             ? `${formatNumber(improvement.monthlySaving)} جنيه توفير شهرياً`
-                            : `${Math.abs(improvement.approvalChance)}% تحسين في فرصة الموافقة`}
+                            : recommendation.type === "EXTEND_TENOR"
+                              ? `${formatNumber(improvement.monthlySaving)} جنيه توفير شهرياً`
+                              : `${Math.abs(improvement.approvalChance)}% تحسين في فرصة الموافقة`}
                       </p>
                     </div>
                   )}
@@ -151,6 +153,7 @@ export default function RecommendationModal({ isOpen, onClose, result, onApply }
                     <h4 className="text-sm font-semibold mb-2" style={{ color: "var(--text-primary)" }}>نوع التوصية</h4>
                     <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                       {recommendation.type === "SHORTEN_TENOR" && "تقليل مدة التمويل لخفض التكلفة الإجمالية"}
+                      {recommendation.type === "EXTEND_TENOR" && "تمديد مدة التمويل لتقليل القسط الشهري"}
                       {recommendation.type === "INCREASE_DOWN_PAYMENT" && "زيادة الدفعة الأولى لتحسين شروط التمويل"}
                       {recommendation.type === "SWITCH_METHOD" && "التحويل لنظام الرصيد المتناقص"}
                       {recommendation.type === "BEST_BANK_ALTERNATIVE" && "اختيار بنك بديل بفرصة موافقة أعلى"}

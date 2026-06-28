@@ -230,13 +230,13 @@ export default function EvaluatePage() {
     setApplyingRecommendation(true);
     try {
       const suggestedParams: { tenor?: number; downPaymentPct?: number } = {};
-      let recType: "SHORTEN_TENOR" | "INCREASE_DOWN_PAYMENT" = "INCREASE_DOWN_PAYMENT";
+      let recType: "SHORTEN_TENOR" | "EXTEND_TENOR" | "INCREASE_DOWN_PAYMENT" = "INCREASE_DOWN_PAYMENT";
 
       if (action.type === "INCREASE_DOWN_PAYMENT") {
         recType = "INCREASE_DOWN_PAYMENT";
         suggestedParams.downPaymentPct = action.pct;
       } else if (action.type === "EXTEND_DURATION") {
-        recType = "SHORTEN_TENOR";
+        recType = "EXTEND_TENOR";
         suggestedParams.tenor = action.months;
       } else if (action.type === "REDUCE_DURATION") {
         recType = "SHORTEN_TENOR";
@@ -597,7 +597,13 @@ export default function EvaluatePage() {
                     className="glass-btn glass-btn-secondary rounded-xl px-6 py-3 text-sm font-semibold"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => toast.success("PDF download started...")}
+                    onClick={() => {
+                    if (selectedId != null) {
+                      window.open("/application/" + selectedId + "/form", "_blank");
+                    } else {
+                      toast.error("لم يتم تحديد طلب");
+                    }
+                  }}
                   >
                     {t("evaluate.sharePdf")}
                   </motion.button>

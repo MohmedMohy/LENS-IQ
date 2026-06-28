@@ -89,7 +89,8 @@ export async function compareOffers(
 export async function compareOffersDetailed(
     input: ApplicationInput,
     programs: Program[],
-    tenantId: number
+    tenantId: number,
+    preferredTenors?: number[]
 ): Promise<CompareOffersResult> {
     const errors: string[] = [];
     const approved: RankedOffer[] = [];
@@ -105,6 +106,10 @@ export async function compareOffersDetailed(
         return { approved, conditional, rejected, errors };
     }
 
+    const allTenors = preferredTenors && preferredTenors.length > 0
+        ? [...new Set([...effectiveTenors, ...preferredTenors])].sort((a, b) => a - b)
+        : effectiveTenors;
+
     if (programs.length === 0) {
         errors.push("No financing programs configured for this tenant");
         return { approved, conditional, rejected, errors };
@@ -115,7 +120,7 @@ export async function compareOffersDetailed(
         const pConditional: RankedOffer[] = [];
         let programHadApproved = false;
 
-        for (const months of effectiveTenors) {
+        for (const months of allTenors) {
             if (programHadApproved) break;
 
             for (const downPct of DOWN_PAYMENT_PCTS) {

@@ -4,7 +4,6 @@ import { routePaths } from "@/router/route-paths";
 import ProtectedRoute from "@/router/protected-route";
 import { useAuthStore } from "@/store/auth.store";
 import { authApi } from "@/features/auth/api/auth.api";
-import type { Tenant } from "@/types/auth";
 
 const ApplyPage = lazy(() => import("@/features/apply/pages/ApplyPage"));
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));

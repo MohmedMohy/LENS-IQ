@@ -3,7 +3,7 @@ import type { RankedOffer } from "@/types";
 
 export type EvaluateRecommendationPayload = {
   applicationId: number;
-  recommendationType: "SHORTEN_TENOR" | "INCREASE_DOWN_PAYMENT" | "SWITCH_METHOD" | "BEST_BANK_ALTERNATIVE";
+  recommendationType: "SHORTEN_TENOR" | "EXTEND_TENOR" | "INCREASE_DOWN_PAYMENT" | "SWITCH_METHOD" | "BEST_BANK_ALTERNATIVE";
   suggestedParams: {
     tenor?: number;
     downPaymentPct?: number;
