@@ -146,7 +146,7 @@ fastify.addHook("onRoute", (routeOptions) => {
 fastify.addHook("onRequest", async (request, reply) => {
   const url = request.url;
   if (FRONTEND_DIST && url.startsWith("/assets/")) {
-    const relativePath = url.replace("/assets/", "").split("?")[0];
+    const relativePath = url.split("?")[0].replace(/^\//, "");
     const filePath = path.join(FRONTEND_DIST, relativePath);
     if (filePath.startsWith(FRONTEND_DIST)) {
       const cached = assetCache.get(relativePath);
