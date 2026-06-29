@@ -34,7 +34,6 @@ export type Program = {
     code: string | null;
     description: string | null;
     customer_types: CustomerType[];
-    priority: number;
     required_documents: string[];
 
     financing_type: FinancingType;
@@ -66,7 +65,6 @@ export type CreateProgramPayload = {
     code?: string;
     description?: string;
     customer_types: CustomerType[];
-    priority?: number;
     required_documents?: string[];
     bank_ids: number[];
 

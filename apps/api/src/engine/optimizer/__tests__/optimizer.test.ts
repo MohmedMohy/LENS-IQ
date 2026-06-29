@@ -35,7 +35,6 @@ const mockProgram: Program = {
   code: null,
   description: null,
   customerTypes: ["salary_transfer"],
-  priority: 0,
   requiredDocuments: [],
   defaultRiskRules: null,
   financingType: "conventional",

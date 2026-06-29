@@ -14,7 +14,6 @@ export interface ProgramRow {
   code: string | null;
   description: string | null;
   customer_types: string[];
-  priority: number;
   required_documents: any;
   default_risk_rules: any;
   financing_type: string;

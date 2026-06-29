@@ -177,7 +177,6 @@ model Program {
   code                     String?
   description              String?
   customer_types           CustomerType[]
-  priority                 Int               @default(0)
   required_documents       Json?
 
   financing_type           FinancingType      @default(conventional)

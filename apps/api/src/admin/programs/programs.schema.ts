@@ -7,7 +7,6 @@ export const createProgramSchema = z.object({
     code: z.string().optional().nullable(),
     description: z.string().optional().nullable(),
     customer_types: z.array(customerTypeSchema).min(1, "Select at least one customer type"),
-    priority: z.number().int().min(0).default(0),
     required_documents: z.array(z.string()).default([]),
 
     bank_ids: z.array(z.number().int().positive()).optional().default([]),

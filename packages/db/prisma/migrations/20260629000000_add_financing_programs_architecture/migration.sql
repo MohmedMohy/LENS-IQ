@@ -63,7 +63,6 @@ FROM "programs";
 ALTER TABLE "programs" ADD COLUMN "code" TEXT;
 ALTER TABLE "programs" ADD COLUMN "description" TEXT;
 ALTER TABLE "programs" ADD COLUMN "customer_types" "CustomerType"[] NOT NULL DEFAULT '{}';
-ALTER TABLE "programs" ADD COLUMN "priority" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "programs" ADD COLUMN "required_documents" JSONB;
 ALTER TABLE "programs" ADD COLUMN "default_risk_rules" JSONB;
 ALTER TABLE "programs" ADD COLUMN "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;

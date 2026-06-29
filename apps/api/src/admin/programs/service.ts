@@ -6,7 +6,7 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
 
   const result = await db.query(
     `INSERT INTO programs (
-            tenant_id, name, code, description, customer_types, priority, required_documents,
+            tenant_id, name, code, description, customer_types, required_documents,
             financing_type, calculation_method,
             min_salary, max_customer_age, salary_transfer_required,
             max_car_age, allowed_conditions, max_vehicle_price,
@@ -14,7 +14,7 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
             min_down_payment_percent, max_down_payment_percent, max_finance_amount, admin_fees_percent,
             active
         ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
         ) RETURNING *`,
     [
       tenantId,
@@ -22,7 +22,6 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
       programData.code ?? null,
       programData.description ?? null,
       programData.customer_types,
-      programData.priority ?? 0,
       JSON.stringify(programData.required_documents ?? []),
       programData.financing_type,
       programData.calculation_method,
@@ -69,68 +68,89 @@ export async function createProgram(data: CreateProgramDTO, tenantId: number) {
 }
 
 export async function getPrograms(tenantId: number) {
-  const result = await db.query(
-    `SELECT p.*,
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'program_id', pb.program_id,
-                        'bank_id', pb.bank_id,
-                        'interest_rate', pb.interest_rate,
-                        'profit_rate', pb.profit_rate,
-                        'min_months', pb.min_months,
-                        'max_months', pb.max_months,
-                        'min_down_payment_percent', pb.min_down_payment_percent,
-                        'max_down_payment_percent', pb.max_down_payment_percent,
-                        'max_finance_amount', pb.max_finance_amount,
-                        'admin_fees_percent', pb.admin_fees_percent,
-                        'max_car_age', pb.max_car_age,
-                        'max_vehicle_price', pb.max_vehicle_price,
-                        'active', pb.active
-                    )
-                ) FILTER (WHERE pb.program_id IS NOT NULL),
-                '[]'
-            ) AS banks
-         FROM programs p
-         LEFT JOIN program_banks pb ON pb.program_id = p.id
-         WHERE p.tenant_id = $1
-         GROUP BY p.id
-         ORDER BY p.priority ASC, p.id DESC`,
-    [tenantId]
-  );
-  return result.rows;
+  try {
+    const result = await db.query(
+      `SELECT p.*,
+              COALESCE(
+                  json_agg(
+                      json_build_object(
+                          'program_id', pb.program_id,
+                          'bank_id', pb.bank_id,
+                          'interest_rate', pb.interest_rate,
+                          'profit_rate', pb.profit_rate,
+                          'min_months', pb.min_months,
+                          'max_months', pb.max_months,
+                          'min_down_payment_percent', pb.min_down_payment_percent,
+                          'max_down_payment_percent', pb.max_down_payment_percent,
+                          'max_finance_amount', pb.max_finance_amount,
+                          'admin_fees_percent', pb.admin_fees_percent,
+                          'max_car_age', pb.max_car_age,
+                          'max_vehicle_price', pb.max_vehicle_price,
+                          'active', pb.active
+                      )
+                  ) FILTER (WHERE pb.program_id IS NOT NULL),
+                  '[]'
+              ) AS banks
+           FROM programs p
+           LEFT JOIN program_banks pb ON pb.program_id = p.id
+           WHERE p.tenant_id = $1
+           GROUP BY p.id
+           ORDER BY p.id DESC`,
+      [tenantId]
+    );
+    return result.rows;
+  } catch (err) {
+    const result = await db.query(
+      `SELECT p.*, '[]'::json AS banks
+       FROM programs p
+       WHERE p.tenant_id = $1
+       ORDER BY p.id DESC`,
+      [tenantId]
+    );
+    return result.rows;
+  }
 }
 
 export async function getProgramById(id: number, tenantId: number) {
-  const result = await db.query(
-    `SELECT p.*,
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'program_id', pb.program_id,
-                        'bank_id', pb.bank_id,
-                        'interest_rate', pb.interest_rate,
-                        'profit_rate', pb.profit_rate,
-                        'min_months', pb.min_months,
-                        'max_months', pb.max_months,
-                        'min_down_payment_percent', pb.min_down_payment_percent,
-                        'max_down_payment_percent', pb.max_down_payment_percent,
-                        'max_finance_amount', pb.max_finance_amount,
-                        'admin_fees_percent', pb.admin_fees_percent,
-                        'max_car_age', pb.max_car_age,
-                        'max_vehicle_price', pb.max_vehicle_price,
-                        'active', pb.active
-                    )
-                ) FILTER (WHERE pb.program_id IS NOT NULL),
-                '[]'
-            ) AS banks
-         FROM programs p
-         LEFT JOIN program_banks pb ON pb.program_id = p.id
-         WHERE p.id = $1 AND p.tenant_id = $2
-         GROUP BY p.id`,
-    [id, tenantId]
-  );
-  return result.rows[0] ?? null;
+  try {
+    const result = await db.query(
+      `SELECT p.*,
+              COALESCE(
+                  json_agg(
+                      json_build_object(
+                          'program_id', pb.program_id,
+                          'bank_id', pb.bank_id,
+                          'interest_rate', pb.interest_rate,
+                          'profit_rate', pb.profit_rate,
+                          'min_months', pb.min_months,
+                          'max_months', pb.max_months,
+                          'min_down_payment_percent', pb.min_down_payment_percent,
+                          'max_down_payment_percent', pb.max_down_payment_percent,
+                          'max_finance_amount', pb.max_finance_amount,
+                          'admin_fees_percent', pb.admin_fees_percent,
+                          'max_car_age', pb.max_car_age,
+                          'max_vehicle_price', pb.max_vehicle_price,
+                          'active', pb.active
+                      )
+                  ) FILTER (WHERE pb.program_id IS NOT NULL),
+                  '[]'
+              ) AS banks
+           FROM programs p
+           LEFT JOIN program_banks pb ON pb.program_id = p.id
+           WHERE p.id = $1 AND p.tenant_id = $2
+           GROUP BY p.id`,
+      [id, tenantId]
+    );
+    return result.rows[0] ?? null;
+  } catch {
+    const result = await db.query(
+      `SELECT p.*, '[]'::json AS banks
+       FROM programs p
+       WHERE p.id = $1 AND p.tenant_id = $2`,
+      [id, tenantId]
+    );
+    return result.rows[0] ?? null;
+  }
 }
 
 export async function updateProgram(id: number, data: UpdateProgramDTO, tenantId: number) {
@@ -149,30 +169,29 @@ export async function updateProgram(id: number, data: UpdateProgramDTO, tenantId
             code=COALESCE($2, code),
             description=COALESCE($3, description),
             customer_types=COALESCE($4, customer_types),
-            priority=COALESCE($5, priority),
-            required_documents=COALESCE($6, required_documents::text::jsonb),
-            financing_type=COALESCE($7, financing_type),
-            calculation_method=COALESCE($8, calculation_method),
-            min_salary=COALESCE($9, min_salary),
-            max_customer_age=COALESCE($10, max_customer_age),
-            salary_transfer_required=COALESCE($11, salary_transfer_required),
-            max_car_age=COALESCE($12, max_car_age),
-            allowed_conditions=COALESCE($13, allowed_conditions),
-            max_vehicle_price=COALESCE($14, max_vehicle_price),
-            interest_rate=COALESCE($15, interest_rate),
-            profit_rate=COALESCE($16, profit_rate),
-            min_months=COALESCE($17, min_months),
-            max_months=COALESCE($18, max_months),
-            min_down_payment_percent=COALESCE($19, min_down_payment_percent),
-            max_down_payment_percent=COALESCE($20, max_down_payment_percent),
-            max_finance_amount=COALESCE($21, max_finance_amount),
-            admin_fees_percent=COALESCE($22, admin_fees_percent),
-            active=COALESCE($23, active)
-        WHERE id=$24 AND tenant_id=$25
+            required_documents=COALESCE($5, required_documents::text::jsonb),
+            financing_type=COALESCE($6, financing_type),
+            calculation_method=COALESCE($7, calculation_method),
+            min_salary=COALESCE($8, min_salary),
+            max_customer_age=COALESCE($9, max_customer_age),
+            salary_transfer_required=COALESCE($10, salary_transfer_required),
+            max_car_age=COALESCE($11, max_car_age),
+            allowed_conditions=COALESCE($12, allowed_conditions),
+            max_vehicle_price=COALESCE($13, max_vehicle_price),
+            interest_rate=COALESCE($14, interest_rate),
+            profit_rate=COALESCE($15, profit_rate),
+            min_months=COALESCE($16, min_months),
+            max_months=COALESCE($17, max_months),
+            min_down_payment_percent=COALESCE($18, min_down_payment_percent),
+            max_down_payment_percent=COALESCE($19, max_down_payment_percent),
+            max_finance_amount=COALESCE($20, max_finance_amount),
+            admin_fees_percent=COALESCE($21, admin_fees_percent),
+            active=COALESCE($22, active)
+        WHERE id=$23 AND tenant_id=$24
         RETURNING *`,
     [
       programData.name ?? null, programData.code ?? null, programData.description ?? null,
-      programData.customer_types ?? null, programData.priority ?? null,
+      programData.customer_types ?? null,
       programData.required_documents ? JSON.stringify(programData.required_documents) : null,
       programData.financing_type ?? null, programData.calculation_method ?? null,
       programData.min_salary ?? null, programData.max_customer_age ?? null,
@@ -230,35 +249,46 @@ export async function deleteProgram(id: number, tenantId: number) {
 }
 
 export async function getActiveProgramsByCustomerType(tenantId: number, customerType: string) {
-  const result = await db.query(
-    `SELECT p.*,
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'program_id', pb.program_id,
-                        'bank_id', pb.bank_id,
-                        'interest_rate', pb.interest_rate,
-                        'profit_rate', pb.profit_rate,
-                        'min_months', pb.min_months,
-                        'max_months', pb.max_months,
-                        'min_down_payment_percent', pb.min_down_payment_percent,
-                        'max_down_payment_percent', pb.max_down_payment_percent,
-                        'max_finance_amount', pb.max_finance_amount,
-                        'admin_fees_percent', pb.admin_fees_percent,
-                        'max_car_age', pb.max_car_age,
-                        'max_vehicle_price', pb.max_vehicle_price,
-                        'active', pb.active
-                    )
-                ) FILTER (WHERE pb.program_id IS NOT NULL),
-                '[]'
-            ) AS banks
-         FROM programs p
-         LEFT JOIN program_banks pb ON pb.program_id = p.id
-         WHERE p.tenant_id = $1 AND p.active = true
-           AND $2 = ANY(p.customer_types)
-         GROUP BY p.id
-         ORDER BY p.priority ASC, p.id DESC`,
-    [tenantId, customerType]
-  );
-  return result.rows;
+  try {
+    const result = await db.query(
+      `SELECT p.*,
+              COALESCE(
+                  json_agg(
+                      json_build_object(
+                          'program_id', pb.program_id,
+                          'bank_id', pb.bank_id,
+                          'interest_rate', pb.interest_rate,
+                          'profit_rate', pb.profit_rate,
+                          'min_months', pb.min_months,
+                          'max_months', pb.max_months,
+                          'min_down_payment_percent', pb.min_down_payment_percent,
+                          'max_down_payment_percent', pb.max_down_payment_percent,
+                          'max_finance_amount', pb.max_finance_amount,
+                          'admin_fees_percent', pb.admin_fees_percent,
+                          'max_car_age', pb.max_car_age,
+                          'max_vehicle_price', pb.max_vehicle_price,
+                          'active', pb.active
+                      )
+                  ) FILTER (WHERE pb.program_id IS NOT NULL),
+                  '[]'
+              ) AS banks
+           FROM programs p
+           LEFT JOIN program_banks pb ON pb.program_id = p.id
+           WHERE p.tenant_id = $1 AND p.active = true
+             AND $2 = ANY(p.customer_types)
+           GROUP BY p.id
+           ORDER BY p.id DESC`,
+      [tenantId, customerType]
+    );
+    return result.rows;
+  } catch {
+    const result = await db.query(
+      `SELECT p.*, '[]'::json AS banks
+       FROM programs p
+       WHERE p.tenant_id = $1 AND p.active = true
+       ORDER BY p.id DESC`,
+      [tenantId]
+    );
+    return result.rows;
+  }
 }

@@ -12,18 +12,29 @@ export async function createBank(data: CreateBankDTO, tenantId: number) {
 }
 
 export async function getBanks(tenantId: number) {
-    const result = await db.query(
-        `SELECT b.*,
-            COALESCE(
-                (SELECT json_agg(DISTINCT pb.program_id) FROM program_banks pb WHERE pb.bank_id = b.id),
-                '[]'::json
-            ) AS supported_program_ids
-         FROM banks b
-         WHERE b.tenant_id = $1
-         ORDER BY b.id DESC`,
-        [tenantId]
-    );
-    return result.rows;
+    try {
+        const result = await db.query(
+            `SELECT b.*,
+                COALESCE(
+                    (SELECT json_agg(DISTINCT pb.program_id) FROM program_banks pb WHERE pb.bank_id = b.id),
+                    '[]'::json
+                ) AS supported_program_ids
+             FROM banks b
+             WHERE b.tenant_id = $1
+             ORDER BY b.id DESC`,
+            [tenantId]
+        );
+        return result.rows;
+    } catch {
+        const result = await db.query(
+            `SELECT b.*, '[]'::json AS supported_program_ids
+             FROM banks b
+             WHERE b.tenant_id = $1
+             ORDER BY b.id DESC`,
+            [tenantId]
+        );
+        return result.rows;
+    }
 }
 
 export async function updateBank(id: number, data: UpdateBankDTO, tenantId: number) {

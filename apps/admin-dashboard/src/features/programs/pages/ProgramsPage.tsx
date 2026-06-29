@@ -41,7 +41,6 @@ type FormState = {
     code: string;
     description: string;
     customer_types: CustomerType[];
-    priority: number;
     required_documents: string[];
     bank_ids: number[];
 
@@ -75,7 +74,6 @@ function defaultForm(): FormState {
         code: "",
         description: "",
         customer_types: [],
-        priority: 0,
         required_documents: [],
         bank_ids: [],
         financing_type: "conventional",
@@ -166,14 +164,13 @@ function ProgramForm({ banks, initial, saving, error, submitLabel, onSubmit, onC
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        if (!f.name.trim() || f.bank_ids.length === 0 || f.customer_types.length === 0) return;
+        if (!f.name.trim() || f.customer_types.length === 0) return;
 
         onSubmit({
             name: f.name.trim(),
             code: f.code || undefined,
             description: f.description || undefined,
             customer_types: f.customer_types,
-            priority: f.priority,
             required_documents: f.required_documents,
             bank_ids: f.bank_ids,
             financing_type: f.financing_type,
@@ -211,10 +208,6 @@ function ProgramForm({ banks, initial, saving, error, submitLabel, onSubmit, onC
 
                 <Field label={t("programs.description")}>
                     <input value={f.description} onChange={(e) => set("description", e.target.value)} placeholder="Program for salary transfer customers" className={INPUT_CLS} />
-                </Field>
-
-                <Field label={t("programs.priority")}>
-                    <input type="number" min={0} value={f.priority} onChange={(e) => set("priority", Number(e.target.value))} className={INPUT_CLS} />
                 </Field>
 
                 <Field label={t("programs.financingType")}>
@@ -327,7 +320,7 @@ function ProgramForm({ banks, initial, saving, error, submitLabel, onSubmit, onC
                 {onCancel && (
                     <button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">{t("common.cancel")}</button>
                 )}
-                <button type="submit" disabled={saving || banks.length === 0 || f.bank_ids.length === 0 || f.customer_types.length === 0}
+                <button type="submit" disabled={saving || banks.length === 0 || f.customer_types.length === 0}
                     className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
                     {saving ? t("common.saving") : submitLabel}
                 </button>
@@ -399,9 +392,8 @@ export default function ProgramsPage() {
         code: program.code ?? "",
         description: program.description ?? "",
         customer_types: program.customer_types,
-        priority: program.priority,
         required_documents: program.required_documents,
-        bank_ids: [],
+        bank_ids: program.bank_ids ?? [],
         financing_type: program.financing_type,
         calculation_method: program.calculation_method,
         min_salary: program.min_salary,
@@ -516,7 +508,6 @@ export default function ProgramsPage() {
                         { key: "name", label: t("common.name") },
                         { key: "code", label: t("programs.code") },
                         { key: "customer_types", label: t("programs.customerSegments") },
-                        { key: "priority", label: t("programs.priority") },
                         { key: "interest_rate", label: t("programs.interestRateLabel") },
                         { key: "min_months", label: t("programs.minMonths") },
                         { key: "max_months", label: t("programs.maxMonths") },

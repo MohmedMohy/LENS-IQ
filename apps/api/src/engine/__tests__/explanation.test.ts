@@ -17,7 +17,7 @@ const baseInput: ApplicationInput = {
 const baseProgram: Program = {
   id: 1, tenantId: 1, name: "Test Program", code: null,
   description: null, customerTypes: ["salary_transfer"],
-  priority: 0, requiredDocuments: [],
+  requiredDocuments: [],
   defaultRiskRules: null, financingType: "conventional",
   calculationMethod: "reducing", minSalary: 5000,
   maxCustomerAge: 65, maxCarAge: 10,

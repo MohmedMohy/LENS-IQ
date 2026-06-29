@@ -9,7 +9,6 @@ export function mapProgram(row: ProgramRow): Program {
         code: row.code ?? null,
         description: row.description ?? null,
         customerTypes: row.customer_types as Program["customerTypes"],
-        priority: Number(row.priority) || 0,
         requiredDocuments: Array.isArray(row.required_documents) ? row.required_documents : [],
         defaultRiskRules: row.default_risk_rules ?? null,
 

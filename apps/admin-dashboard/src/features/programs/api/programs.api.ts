@@ -2,13 +2,13 @@ import { apiClient } from "@/api/client";
 import type { Program, CreateProgramPayload, UpdateProgramPayload } from "@/types";
 
 function normalizeProgram(raw: Record<string, unknown>): Program {
+    const banks = Array.isArray(raw.banks) ? raw.banks : [];
     return {
         id: Number(raw.id),
         name: String(raw.name),
         code: raw.code ? String(raw.code) : null,
         description: raw.description ? String(raw.description) : null,
         customer_types: Array.isArray(raw.customer_types) ? raw.customer_types as Program["customer_types"] : [],
-        priority: Number(raw.priority ?? 0),
         required_documents: Array.isArray(raw.required_documents) ? raw.required_documents as string[] : [],
 
         financing_type: (raw.financing_type as Program["financing_type"]) ?? "conventional",
@@ -32,6 +32,7 @@ function normalizeProgram(raw: Record<string, unknown>): Program {
         admin_fees_percent: Number(raw.admin_fees_percent ?? 0),
 
         active: Boolean(raw.active),
+        bank_ids: banks.map((b: any) => Number(b.bank_id)),
     };
 }
 

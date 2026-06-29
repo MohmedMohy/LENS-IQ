@@ -9,7 +9,6 @@ export interface Program {
   code: string | null;
   description: string | null;
   customer_types: CustomerType[];
-  priority: number;
   required_documents: string[];
   default_risk_rules: Record<string, unknown> | null;
 

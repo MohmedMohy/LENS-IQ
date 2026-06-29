@@ -37,7 +37,7 @@ export async function getPrograms(
   tenantId: number
 ): Promise<Program[]> {
   const result = await db.query(
-    `SELECT * FROM programs WHERE active = true AND tenant_id = $1 ORDER BY priority ASC, id DESC`,
+    `SELECT * FROM programs WHERE active = true AND tenant_id = $1 ORDER BY id DESC`,
     [tenantId]
   );
   const programs: Program[] = result.rows.map((row: ProgramRow) => mapProgram(row));
@@ -53,7 +53,7 @@ export async function getProgramsByCustomerType(
     `SELECT * FROM programs 
      WHERE active = true AND tenant_id = $1 
        AND $2 = ANY(customer_types)
-     ORDER BY priority ASC, id DESC`,
+      ORDER BY id DESC`,
     [tenantId, customerType]
   );
   const programs: Program[] = result.rows.map((row: ProgramRow) => mapProgram(row));

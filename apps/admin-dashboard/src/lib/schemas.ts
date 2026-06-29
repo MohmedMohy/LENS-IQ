@@ -22,7 +22,7 @@ export const programSchema = z.object({
     customer_types: z.array(customerTypeSchema).min(1, "Select at least one customer type"),
     priority: z.number().int().min(0).default(0),
     required_documents: z.array(z.string()).default([]),
-    bank_ids: z.array(z.number().int().positive()).min(1, "Select at least one bank"),
+    bank_ids: z.array(z.number().int().positive()).default([]),
 
     financing_type: z.enum(["conventional", "islamic"]).default("conventional"),
     calculation_method: z.enum(["reducing", "flat", "murabaha"]).default("reducing"),
