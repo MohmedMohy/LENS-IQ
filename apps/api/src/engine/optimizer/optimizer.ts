@@ -4,11 +4,14 @@ import type { Offer } from "../../shared/types/offer.js";
 import type { EvaluationResult } from "../../shared/types/result.js";
 
 import { evaluateApplication } from "../evaluation/evaluateApplication.js";
+import { runPolicyEngine } from "../evaluation/policyEngine.js";
 import { generateOffer } from "../offers/offerGenerator.js";
 import { analyzeConstraints } from "./ConstraintAnalyzer.js";
 import { generateCandidates as generateCandidatesFn } from "./CandidateGenerator.js";
 import { rankOffersSmart } from "./RankingEngine.js";
 import { DEFAULT_OPTIMIZER_CONFIG, type OptimizerConfig } from "./config.js";
+import { getRulesByProgramAndScope } from "../../services/getRules.js";
+import type { EvaluationContext } from "../types/context.js";
 import {
   type CandidateRequest,
   type SmartOffer,
@@ -166,6 +169,8 @@ export async function smartOptimize(
 
   const employmentType = mapJobType(input.job_type);
 
+  const bankRulesCache = new Map<number, any[]>();
+
   for (const p of activePrograms) {
     const activeBanks = (p.banks || []).filter(b => b.active);
     const bankIds = activeBanks.length > 0 ? activeBanks.map(b => b.bankId) : [0];
@@ -181,6 +186,8 @@ export async function smartOptimize(
         }
       }
     }
+
+    bankRulesCache.set(p.id, await getRulesByProgramAndScope(p.id, "BANK", tenantId));
   }
 
   timeline.push({ step: 1, action: "Initialize optimization", details: `Generated ${visited.size} unique parameter combinations across ${activePrograms.length} programs` });
@@ -227,6 +234,21 @@ export async function smartOptimize(
       ...evaluation,
       calculationMethod: calculationMethod as any,
     };
+
+    const programBankRules = bankRulesCache.get(program.id);
+    if (programBankRules && programBankRules.length > 0) {
+        const bankCtx: EvaluationContext = {
+            input,
+            program,
+            rules: programBankRules,
+            baseDTI: 0,
+            reasons: [],
+        };
+        const bankPolicy = runPolicyEngine(bankCtx);
+        if (bankPolicy) {
+            continue;
+        }
+    }
 
     const bankName = bankTerms.bankName;
     const offer = generateOffer(input, program, evaluationWithOverrides, bankTerms, bankId, bankName, {

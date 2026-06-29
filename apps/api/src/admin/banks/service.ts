@@ -15,13 +15,11 @@ export async function getBanks(tenantId: number) {
     const result = await db.query(
         `SELECT b.*,
             COALESCE(
-                json_agg(DISTINCT pb.program_id) FILTER (WHERE pb.program_id IS NOT NULL),
-                '[]'
+                (SELECT json_agg(DISTINCT pb.program_id) FROM program_banks pb WHERE pb.bank_id = b.id),
+                '[]'::json
             ) AS supported_program_ids
          FROM banks b
-         LEFT JOIN program_banks pb ON pb.bank_id = b.id
          WHERE b.tenant_id = $1
-         GROUP BY b.id
          ORDER BY b.id DESC`,
         [tenantId]
     );

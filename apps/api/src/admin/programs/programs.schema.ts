@@ -10,7 +10,7 @@ export const createProgramSchema = z.object({
     priority: z.number().int().min(0).default(0),
     required_documents: z.array(z.string()).default([]),
 
-    bank_ids: z.array(z.number().int().positive()).min(1, "Select at least one bank"),
+    bank_ids: z.array(z.number().int().positive()).optional().default([]),
 
     financing_type: z.enum(["conventional", "islamic"]).default("conventional"),
     calculation_method: z.enum(["reducing", "flat", "murabaha"]).default("reducing"),

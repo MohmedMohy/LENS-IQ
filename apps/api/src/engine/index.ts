@@ -1,3 +1,6 @@
+// ============================================================================
+// Legacy API — preserved for backward compatibility
+// ============================================================================
 export { compareOffers, compareOffersDetailed } from "./offers/compareOffers.js";
 export { rankOffers, calculateProgramScore } from "./offers/Ranking.js";
 export { evaluateApplication } from "./evaluation/evaluateApplication.js";
@@ -27,3 +30,37 @@ export type {
   FailedRuleType,
 } from "./optimizer/types.js";
 export type { OptimizerConfig } from "./optimizer/config.js";
+
+// ============================================================================
+// New Engine Modules
+// ============================================================================
+export { RuleEngine } from "./rules/RuleEngine.js";
+export { applyOperator, applyExtendedOperator, checkAllSupportedOperators } from "./rules/operators.js";
+export type {
+  RuleResult,
+  RuleResultStatus,
+  RuleEvaluationContext,
+  ExtendedRuleOperator,
+  ScoringRuleConfig,
+  ScoringRuleSet,
+  ScoreAdjustmentResult,
+} from "./rules/types.js";
+
+export { ScoringEngine, DEFAULT_SCORING_PROFILE, DEFAULT_AFFORDABILITY_PROFILE } from "./scoring/index.js";
+export type { ScoringProfile, ScoringResult, ScoringInput } from "./scoring/types.js";
+
+export { RankingService } from "./ranking/RankingService.js";
+export type { RankingWeights, RankingContext, RankedOffer as RankedOfferNew, RankingProfile, RankingStrategy } from "./ranking/types.js";
+export { DEFAULT_WEIGHTS } from "./ranking/types.js";
+
+export { PipelineEngine } from "./pipeline/PipelineEngine.js";
+export { ValidationStep } from "./pipeline/steps/ValidationStep.js";
+export type { PipelineInput, PipelineState, PipelineStep, PipelineResult } from "./pipeline/types.js";
+
+export { ExplanationBuilder } from "./explanation/ExplanationBuilder.js";
+export type { OfferExplanation, ExplanationFactor, DecisionTraceStep, ExplanationSummary } from "./explanation/types.js";
+
+export { DecisionTrace } from "./audit/DecisionTrace.js";
+export type { AuditEntry, AuditPipelineStep, AuditStoreEntry, DecisionTraceShort } from "./audit/types.js";
+
+export type { WithTenant, WithTimestamps, DeepPartial } from "./shared/types.js";

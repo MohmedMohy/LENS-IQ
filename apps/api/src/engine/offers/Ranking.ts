@@ -1,5 +1,11 @@
 import type { Offer } from "../../shared/types/offer.js";
 
+const STATUS_ORDER: Record<string, number> = {
+  APPROVED: 0,
+  CONDITIONAL: 1,
+  REJECTED: 2,
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -71,10 +77,18 @@ export function calculateProgramScore(
 export function rankOffers(offers: Offer[], requestedMonths?: number): Offer[] {
   const maxInstallment = computeMaxInstallment(offers);
 
-  return [...offers]
-    .map((o) => ({
-      ...o,
-      programScore: calculateProgramScore(o, undefined, maxInstallment, requestedMonths),
-    }))
-    .sort((a, b) => (b.programScore ?? 0) - (a.programScore ?? 0));
+  const scored = offers.map((o) => ({
+    ...o,
+    programScore: calculateProgramScore(o, undefined, maxInstallment, requestedMonths),
+  }));
+
+  return scored.sort((a, b) => {
+    const statusDiff = (STATUS_ORDER[a.status] ?? 2) - (STATUS_ORDER[b.status] ?? 2);
+    if (statusDiff !== 0) return statusDiff;
+
+    const scoreDiff = (b.programScore ?? 0) - (a.programScore ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    return a.installment - b.installment;
+  });
 }

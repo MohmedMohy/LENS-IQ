@@ -5,7 +5,7 @@ import type { EvaluationContext } from "../types/context.js";
 import type { Decision } from "../../shared/types/decision.js";
 import type { EmploymentType } from "../../shared/types/scoring.js";
 
-import { getRulesByProgram } from "../../services/getRules.js";
+import { getRulesByProgramAndScope } from "../../services/getRules.js";
 
 import { checkEligibility } from "./eligibility.js";
 import { runPolicyEngine } from "./policyEngine.js";
@@ -37,7 +37,7 @@ export async function evaluateApplication(
     tenantId: number
 ): Promise<EvaluationResult> {
 
-    const rules = await getRulesByProgram(program.id, tenantId);
+    const rules = await getRulesByProgramAndScope(program.id, "PROGRAM", tenantId);
 
     const ctx: EvaluationContext = {
         input,

@@ -2,8 +2,11 @@ import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 import type { Program, ProgramBank } from "../../shared/types/program.js";
 import type { Offer } from "../../shared/types/offer.js";
 import type { CompareOffersResult, RankedOffer, RejectedOffer } from "../../shared/types/compareResult.js";
+import type { EvaluationContext } from "../types/context.js";
 
 import { evaluateApplication } from "../evaluation/evaluateApplication.js";
+import { runPolicyEngine } from "../evaluation/policyEngine.js";
+import { getRulesByProgramAndScope } from "../../services/getRules.js";
 import { generateOffer } from "./offerGenerator.js";
 import { rankOffers } from "./Ranking.js";
 
@@ -242,6 +245,8 @@ export async function compareOffersDetailed(
             ? activeBanks.map(b => b.bankId)
             : [0];
 
+        const bankRules = await getRulesByProgramAndScope(program.id, "BANK", tenantId);
+
         for (const bankId of bankIdsToEvaluate) {
             const bankTerms = getEffectiveTerms(program, bankId);
 
@@ -251,6 +256,26 @@ export async function compareOffersDetailed(
 
             const effectiveMaxCarAge = Math.min(conditionMaxCarAge, bankTerms.maxCarAge);
             if (carAge > effectiveMaxCarAge) continue;
+
+            if (bankRules.length > 0) {
+                const bankCtx: EvaluationContext = {
+                    input,
+                    program,
+                    rules: bankRules,
+                    baseDTI: 0,
+                    reasons: [],
+                };
+                const bankPolicy = runPolicyEngine(bankCtx);
+                if (bankPolicy) {
+                    const rejectedOffer = generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName);
+                    rejectedOffer.status = "REJECTED";
+                    rejectedOffer.reasons = bankCtx.reasons.length > 0
+                        ? bankCtx.reasons
+                        : [{ type: "RULE", message: `Bank rule: ${bankPolicy.reason.message}`, impact: "HIGH" }];
+                    allOffers.push(rejectedOffer);
+                    continue;
+                }
+            }
 
             const scenarios = generateScenarios(input, program, bankTerms);
 
@@ -267,7 +292,7 @@ export async function compareOffersDetailed(
 
                 if (bankTerms.maxFinanceAmount !== null && loanAmount > bankTerms.maxFinanceAmount) continue;
 
-                const offer = generateOffer(input, program, evaluation, bankTerms, bankId, undefined, {
+                const offer = generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName, {
                     overrideMonths: scen.months,
                     overrideDownPaymentPercent: scen.downPaymentPct,
                 });
@@ -287,7 +312,7 @@ export async function compareOffersDetailed(
                     for (const bankTerms of activeBanks) {
                         if (t >= bankTerms.minMonths && t <= bankTerms.maxMonths) {
                             const defaultDP = Math.max(bankTerms.minDownPaymentPercent, 25);
-                            const offer = generateOffer(input, program, evaluation, bankTerms, bankTerms.bankId, undefined, {
+                            const offer = generateOffer(input, program, evaluation, bankTerms, bankTerms.bankId, bankTerms.bankName, {
                                 overrideMonths: t,
                                 overrideDownPaymentPercent: defaultDP,
                             });
