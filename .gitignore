@@ -3,6 +3,7 @@ dist
 .next
 .turbo
 *.log
+server.err
 .env
 .env.local
 .env.production
