@@ -251,10 +251,10 @@ export async function smartOptimize(
     }
 
     const bankName = bankTerms.bankName;
-    const offer = generateOffer(input, program, evaluationWithOverrides, bankTerms, bankId, bankName, {
+    const offer = await generateOffer(input, program, evaluationWithOverrides, bankTerms, bankId, bankName, {
       overrideMonths: months,
       overrideDownPaymentPercent: downPaymentPercent,
-    });
+    }, tenantId);
 
     evaluatedCount++;
 

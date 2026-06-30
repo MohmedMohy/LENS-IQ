@@ -6,6 +6,11 @@ export type DTIResult = {
   employmentAdjusted: boolean;
 };
 
+// Regulatory DTI limits (Central Bank of Egypt policy for consumer finance)
+// These are regulatory constants, NOT configurable per bank/program.
+// MAX_DTI_STANDARD: 50% — general ceiling for non-government employees
+// MAX_DTI_GOVERNMENT: 55% — relaxed ceiling for government employees
+// ELIGIBILITY_CEILING: 60% — hard absolute ceiling, no exceptions above this
 export const MAX_DTI_STANDARD = 50;
 export const MAX_DTI_GOVERNMENT = 55;
 export const ELIGIBILITY_CEILING = 60;

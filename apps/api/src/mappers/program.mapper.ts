@@ -30,6 +30,7 @@ export function mapProgram(row: ProgramRow): Program {
         maxDownPaymentPercent: Number(row.max_down_payment_percent) || 100,
         maxFinanceAmount: row.max_finance_amount ? Number(row.max_finance_amount) : null,
         adminFeesPercent: Number(row.admin_fees_percent) || 0,
+        maxLtvPercent: row.max_ltv_percent ? Number(row.max_ltv_percent) : undefined,
 
         salaryTransferRequired: Boolean(row.salary_transfer_required),
         active: Boolean(row.active),

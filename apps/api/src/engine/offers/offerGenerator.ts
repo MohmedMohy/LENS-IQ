@@ -3,10 +3,12 @@ import type { ApplicationInput } from "../../shared/types/applicationInput.js";
 import type { EvaluationResult, EvaluationStatus } from "../../shared/types/result.js";
 import type { Offer } from "../../shared/types/offer.js";
 import type { EmploymentType } from "../../shared/types/scoring.js";
+import type { ScoringProfile } from "../scoring/types.js";
 
 import { calculateLoan } from "../pricing/loanCalculator.js";
 import { analyze } from "../scoring/scoring.js";
 import { MAX_DTI_STANDARD, MAX_DTI_GOVERNMENT } from "../scoring/dti.js";
+import { ScoringProfileResolver } from "../../services/ScoringProfileResolver.js";
 
 export type GenerateOfferOverrides = {
     overrideMonths?: number;
@@ -62,15 +64,16 @@ function computeApprovalProbability(score: {
     return prob;
 }
 
-export function generateOffer(
+export async function generateOffer(
     input: ApplicationInput,
     program: Program,
     evaluation: EvaluationResult,
     bankTerms?: ProgramBank,
     bankId?: number,
     bankName?: string,
-    overrides?: GenerateOfferOverrides
-): Offer {
+    overrides?: GenerateOfferOverrides,
+    tenantId?: number
+): Promise<Offer> {
 
     const employmentType = mapJobType(input.job_type);
     const maxAllowedDTI = employmentType === 'government' ? MAX_DTI_GOVERNMENT : MAX_DTI_STANDARD;
@@ -159,18 +162,32 @@ export function generateOffer(
 
     const carAge = input.car_age ?? (input.carYear ? new Date().getFullYear() - input.carYear : 0);
 
-    const finalScore = analyze({
-        age: input.age,
-        salary: input.salary,
-        installment: calc.installment,
-        current_liabilities: input.current_liabilities,
-        employmentType,
-        iScore: input.iScore,
-        riskScore: evaluation.riskScore,
-        salaryTransfer: input.salary_transfer,
-        vehicleCondition: input.vehicleCondition,
-        carAge,
-    });
+    let scoringProfiles: { riskProfile?: ScoringProfile; affordabilityProfile?: ScoringProfile } = {};
+    if (tenantId) {
+        const [riskProfile, affordabilityProfile] = await Promise.all([
+            ScoringProfileResolver.loadRiskProfile(tenantId),
+            ScoringProfileResolver.loadAffordabilityProfile(tenantId),
+        ]);
+        scoringProfiles = { riskProfile, affordabilityProfile };
+    }
+
+    const finalScore = analyze(
+        {
+            age: input.age,
+            salary: input.salary,
+            installment: calc.installment,
+            current_liabilities: input.current_liabilities,
+            employmentType,
+            iScore: input.iScore,
+            riskScore: evaluation.riskScore,
+            salaryTransfer: input.salary_transfer,
+            vehicleCondition: input.vehicleCondition,
+            carAge,
+        },
+        scoringProfiles.riskProfile && scoringProfiles.affordabilityProfile
+            ? { riskProfile: scoringProfiles.riskProfile, affordabilityProfile: scoringProfiles.affordabilityProfile }
+            : undefined
+    );
 
     let finalStatus: EvaluationStatus;
     if (evaluation.status === "REJECTED") {

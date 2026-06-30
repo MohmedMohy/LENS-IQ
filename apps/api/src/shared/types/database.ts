@@ -32,6 +32,7 @@ export interface ProgramRow {
   max_down_payment_percent: number;
   max_finance_amount: number | null;
   admin_fees_percent: number;
+  max_ltv_percent?: number | null;
   active: boolean;
 }
 
@@ -48,6 +49,7 @@ export interface ProgramBankRow {
   admin_fees_percent: number;
   max_car_age: number;
   max_vehicle_price: number | null;
+  max_ltv_percent?: number | null;
   active: boolean;
 }
 

@@ -12,8 +12,6 @@ import { rankOffers } from "./Ranking.js";
 
 const MAX_RESULT_OFFERS = 10;
 
-const NEW_CAR_MAX_LTV = 80;
-const USED_CAR_MAX_LTV = 70;
 const NEW_CAR_MAX_AGE_YEARS = 7;
 const USED_CAR_MAX_AGE_YEARS = 5;
 
@@ -43,6 +41,12 @@ function resolveCarAge(input: ApplicationInput): number {
         return new Date().getFullYear() - input.carYear;
     }
     return 0;
+}
+
+function resolveMaxLTV(program: Program, bankTerms: ProgramBank, condition: 'new' | 'used'): number {
+    if (bankTerms.maxLtvPercent !== undefined && bankTerms.maxLtvPercent !== null) return bankTerms.maxLtvPercent;
+    if (program.maxLtvPercent !== undefined && program.maxLtvPercent !== null) return program.maxLtvPercent;
+    return condition === 'new' ? 80 : 70;
 }
 
 function getEffectiveTerms(program: Program, bankId: number): ProgramBank {
@@ -220,7 +224,6 @@ export async function compareOffersDetailed(
 
     const condition = resolveCondition(input);
     const carAge = resolveCarAge(input);
-    const maxLTV = condition === 'new' ? NEW_CAR_MAX_LTV : USED_CAR_MAX_LTV;
     const conditionMaxCarAge = condition === 'new' ? NEW_CAR_MAX_AGE_YEARS : USED_CAR_MAX_AGE_YEARS;
 
     if (programs.length === 0) {
@@ -235,7 +238,7 @@ export async function compareOffersDetailed(
 
         if (evaluation.status === "REJECTED") {
             const bankTerms = getEffectiveTerms(program, 0);
-            const offer = generateOffer(input, program, evaluation, bankTerms, 0, undefined);
+            const offer = await generateOffer(input, program, evaluation, bankTerms, 0, undefined, undefined, tenantId);
             allOffers.push(offer);
             continue;
         }
@@ -267,7 +270,7 @@ export async function compareOffersDetailed(
                 };
                 const bankPolicy = runPolicyEngine(bankCtx);
                 if (bankPolicy) {
-                    const rejectedOffer = generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName);
+                    const rejectedOffer = await generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName, undefined, tenantId);
                     rejectedOffer.status = "REJECTED";
                     rejectedOffer.reasons = bankCtx.reasons.length > 0
                         ? bankCtx.reasons
@@ -287,15 +290,16 @@ export async function compareOffersDetailed(
                 const downPaymentAmount = input.price * (scen.downPaymentPct / 100);
                 const loanAmount = input.price - downPaymentAmount;
                 const ltvRatio = (loanAmount / input.price) * 100;
+                const effectiveMaxLTV = resolveMaxLTV(program, bankTerms, condition);
 
-                if (ltvRatio > maxLTV) continue;
+                if (ltvRatio > effectiveMaxLTV) continue;
 
                 if (bankTerms.maxFinanceAmount !== null && loanAmount > bankTerms.maxFinanceAmount) continue;
 
-                const offer = generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName, {
+                const offer = await generateOffer(input, program, evaluation, bankTerms, bankId, bankTerms.bankName, {
                     overrideMonths: scen.months,
                     overrideDownPaymentPercent: scen.downPaymentPct,
-                });
+                }, tenantId);
 
                 allOffers.push(offer);
             }
@@ -312,10 +316,10 @@ export async function compareOffersDetailed(
                     for (const bankTerms of activeBanks) {
                         if (t >= bankTerms.minMonths && t <= bankTerms.maxMonths) {
                             const defaultDP = Math.max(bankTerms.minDownPaymentPercent, 25);
-                            const offer = generateOffer(input, program, evaluation, bankTerms, bankTerms.bankId, bankTerms.bankName, {
+                            const offer = await generateOffer(input, program, evaluation, bankTerms, bankTerms.bankId, bankTerms.bankName, {
                                 overrideMonths: t,
                                 overrideDownPaymentPercent: defaultDP,
-                            });
+                            }, tenantId);
                             allOffers.push(offer);
                             break;
                         }

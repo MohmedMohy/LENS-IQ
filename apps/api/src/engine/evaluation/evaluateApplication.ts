@@ -6,11 +6,12 @@ import type { Decision } from "../../shared/types/decision.js";
 import type { EmploymentType } from "../../shared/types/scoring.js";
 
 import { getRulesByProgramAndScope } from "../../services/getRules.js";
+import { ScoringProfileResolver } from "../../services/ScoringProfileResolver.js";
 
 import { checkEligibility } from "./eligibility.js";
 import { runPolicyEngine } from "./policyEngine.js";
 
-import { evaluateRisk } from "../scoring/riskScore.js";
+import { ScoringEngine } from "../scoring/ScoringEngine.js";
 
 import { buildResult } from "../builders/result.builder.js";
 
@@ -72,12 +73,10 @@ export async function evaluateApplication(
 
     const employmentType = mapJobType(input.job_type);
 
-    const risk = evaluateRisk(
-        input.age,
-        input.salary,
-        eligibility.dti,
-        employmentType,
-        input.iScore
+    const riskProfile = await ScoringProfileResolver.loadRiskProfile(tenantId);
+    const risk = ScoringEngine.calculateRisk(
+        { age: input.age, salary: input.salary, dti: eligibility.dti, employmentType, iScore: input.iScore },
+        riskProfile
     );
 
     let decision: Decision;
@@ -132,6 +131,6 @@ export async function evaluateApplication(
         calculationMethod: program.calculationMethod,
         riskScore: risk.score,
         riskLevel: risk.level,
-        riskFactors: risk.riskFactors,
+        riskFactors: risk.adjustments.map((a) => a.reason),
     };
 }

@@ -26,6 +26,7 @@ async function attachBanksToProgram(program: Program, tenantId: number): Promise
         adminFeesPercent: Number(row.admin_fees_percent) || 0,
         maxCarAge: Number(row.max_car_age) || 0,
         maxVehiclePrice: row.max_vehicle_price ? Number(row.max_vehicle_price) : null,
+        maxLtvPercent: row.max_ltv_percent ? Number(row.max_ltv_percent) : undefined,
         active: Boolean(row.active),
         bankName: row.bank_name || undefined,
     }));

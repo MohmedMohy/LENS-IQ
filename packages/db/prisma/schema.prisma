@@ -90,8 +90,9 @@ model Tenant {
   applications   Application[]
   offers         Offer[]
   refresh_tokens RefreshToken[]
-  users          User[]
-  audit_logs     AuditLog[]
+  users            User[]
+  audit_logs       AuditLog[]
+  scoring_profiles ScoringProfile[]
 
   @@map("tenants")
 }
@@ -152,6 +153,41 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model ScoringProfile {
+  id          Int      @id @default(autoincrement())
+  tenant_id   Int?
+  name        String
+  type        String   @default("RISK")
+  base_score  Float    @default(0)
+  thresholds  Json?
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  tenant Tenant?                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  rules  ScoringProfileRule[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, type, active])
+  @@map("scoring_profiles")
+}
+
+model ScoringProfileRule {
+  id               Int      @id @default(autoincrement())
+  profile_id       Int
+  field            String
+  operator         String
+  value            String
+  score_adjustment Float
+  max_adjustment   Float?
+  priority         Int      @default(0)
+  conditions       Json?
+
+  profile ScoringProfile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@index([profile_id])
+  @@map("scoring_profile_rules")
+}
+
 model Bank {
   id         Int      @id @default(autoincrement())
   tenant_id  Int
@@ -197,6 +233,7 @@ model Program {
   max_finance_amount       Float?
   admin_fees_percent       Float             @default(0)
   default_risk_rules       Json?
+  max_ltv_percent          Float?
 
   active                   Boolean           @default(true)
   created_at               DateTime          @default(now())
@@ -226,6 +263,7 @@ model ProgramBank {
   admin_fees_percent      Float             @default(0)
   max_car_age             Int               @default(0)
   max_vehicle_price       Float?
+  max_ltv_percent         Float?
   active                  Boolean           @default(true)
 
   program Program @relation(fields: [program_id], references: [id], onDelete: Cascade)

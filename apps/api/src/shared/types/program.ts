@@ -31,6 +31,7 @@ export interface Program {
   maxDownPaymentPercent: number;
   maxFinanceAmount: number | null;
   adminFeesPercent: number;
+  maxLtvPercent?: number;
 
   salaryTransferRequired: boolean;
   active: boolean;
@@ -51,6 +52,7 @@ export interface ProgramBank {
   adminFeesPercent: number;
   maxCarAge: number;
   maxVehiclePrice: number | null;
+  maxLtvPercent?: number;
   active: boolean;
   bankName?: string;
 }
